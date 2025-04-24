@@ -79,12 +79,13 @@ def generate_dataset(config_path: str):
     if not quiet:
         print("Dataset saved.")
 
-# Script entry point
-if __name__ == "__main__":
-    import argparse
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="calmly_config.yaml", help="Path to YAML config file")
     args = parser.parse_args()
 
     generate_dataset(config_path=args.config)
+
+if __name__ == "__main__":
+    main()
 
