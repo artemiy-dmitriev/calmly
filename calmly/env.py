@@ -534,7 +534,7 @@ def get_env_factory(
     ...
     """
     def _init():
-        cav_sim = cav_sim_factory(maxtem=maxtem, mis_angle_min=mis_angle_min, mis_angle_max=mis_angle_max)
+        cav_sim = cav_sim_factory()
         scan_proc = scan_processor_factory()
 
         env = CavityAlignmentEnv(

@@ -1,4 +1,5 @@
 from calmly import CavityAlignment, CavityScanPreProcess
+import numpy as np
 
 def cav_sim_factory():
     maxtem = 3
