@@ -6,9 +6,9 @@ import numpy as np
 import yaml
 import argparse
 
-from ..utils import load_factories
-from ..policies import iterative_policy
-from ..env import get_env_factory
+from calmly.utils import load_factories
+from calmly.policies import iterative_policy
+from calmly.env import get_env_factory
 
 
 def load_config(config_path: str) -> dict:
