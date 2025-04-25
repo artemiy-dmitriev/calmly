@@ -47,15 +47,21 @@ def load_dataset(dataset_path: str) -> Transitions:
         next_obs=empty_next_obs,
     )
 
-def train_bc_model(config_path: str):
+def train_bc_model(
+    config_path: str,
+    quiet: bool = False,
+    force: bool = False
+):
     config = load_config(config_path)
 
-    if not config.get("bc", {}).get("enabled", False):
-        print("Behavioral cloning is disabled in config.")
+    if (not config.get("bc", {}).get("enabled", False)) and (not force):
+        print("Behavioral cloning is disabled in config. Change the config file or use --force / force=True to override.")
         return
 
+    if quiet==False:
+        quiet = config['bc'].get('quiet', False)
+        
     dataset_path = config['dataset']['path']
-    quiet = config['bc'].get('quiet', False)
     torch_num_threads = config['bc'].get("torch_num_threads", 10)
     seed = config['bc'].get("seed", 42)
     device_name = config['bc'].get("device", None)
@@ -131,9 +137,15 @@ def train_bc_model(config_path: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="calmly_config.yaml", help="Path to YAML config file")
+    parser.add_argument("-q", "--quiet", action='store_true', help="Do not verbose the output")
+    parser.add_argument("-f", "--force", action='store_true', help="Override the enable/disable setting in the config file")
     args = parser.parse_args()
 
-    train_bc_model(config_path=args.config)
+    train_bc_model(
+        config_path=args.config,
+        quiet=args.quiet,
+        force=args.force
+    )
     
 if __name__ == "__main__":
     main()

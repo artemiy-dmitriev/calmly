@@ -27,16 +27,22 @@ def load_heuristic_policy(policy_path):
         mod = importlib.import_module(mod_path)
         return getattr(mod, func_name)
 
-def generate_dataset(config_path: str):
+def generate_dataset(
+    config_path: str,
+    quiet: bool = False,
+    force: bool = False
+):
     config = load_config(config_path)
 
-    if not config.get("dataset", {}).get("enabled", False):
-        print("Dataset generation is disabled in config.")
+    if (not config.get("dataset", {}).get("enabled", False)) and (not force):
+        print("Dataset generation is disabled in config. Change the config file or use --force / force=True to override.")
         return
 
+    if quiet==False:
+        quiet = config['dataset'].get('quiet', False)
+    
     dataset_path = config['dataset']['path']
     n_episodes = config['dataset']['n_episodes']
-    quiet = config['dataset'].get('quiet', False)
     seed = config['dataset'].get('seed', None)
     
     cav_sim_factory, scan_proc_factory = load_factories(config["factories"]["module"])
@@ -82,9 +88,15 @@ def generate_dataset(config_path: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="calmly_config.yaml", help="Path to YAML config file")
+    parser.add_argument("-q", "--quiet", action='store_true', help="Do not verbose the output")
+    parser.add_argument("-f", "--force", action='store_true', help="Override the enable/disable setting in the config file")
     args = parser.parse_args()
 
-    generate_dataset(config_path=args.config)
+    generate_dataset(
+        config_path=args.config,
+        quiet=args.quiet,
+        force=args.force
+    )
 
 if __name__ == "__main__":
     main()
