@@ -79,7 +79,7 @@ def load_factories(factory_path: str) -> Tuple[Callable, Callable]:
     if path.suffix == ".py":
         spec = importlib.util.spec_from_file_location("user_factories", str(path))
         module = importlib.util.module_from_spec(spec)
-        sys.modules["user_factories"] = module
+        # sys.modules["user_factories"] = module
         spec.loader.exec_module(module)
 
         try:
