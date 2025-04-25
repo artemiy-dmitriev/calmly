@@ -14,6 +14,8 @@ from calmly.env import get_env_factory
 from calmly.utils import load_factories
 from stable_baselines3.ppo import MultiInputPolicy as PPOMultiInputPolicy
 
+import warnings
+warnings.filterwarnings("ignore", message="trying to unwrap object of type")
 
 def load_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
