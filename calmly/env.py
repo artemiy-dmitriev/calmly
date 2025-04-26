@@ -508,6 +508,33 @@ class CavityAlignmentEnv(gym.Env):
     def close(self):
         pass
 
+class AvgRewardPerStepWrapper(gym.Wrapper):
+    """
+    A wrapper for CavityAlignmentEnv 
+    to calculate the average reward per step metric.
+    """
+    def __init__(self, env):
+        super().__init__(env)
+        self.reward_sum = 0.0
+        self.step_count = 0
+
+    def reset(self, **kwargs):
+        self.reward_sum = 0.0
+        self.step_count = 0
+        return self.env.reset(**kwargs)
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        self.reward_sum += reward
+        self.step_count += 1
+
+        if terminated or truncated:
+            avg_reward_per_step = self.reward_sum / max(self.step_count, 1)
+            info["avg_reward_per_step"] = avg_reward_per_step
+
+        return obs, reward, terminated, truncated, info
+
+
 def get_env_factory(
     cav_sim_factory,
     scan_processor_factory,
@@ -520,7 +547,8 @@ def get_env_factory(
     maxtem = 3,
     mis_angle_min=-2e-4,
     mis_angle_max=2e-4,
-    seed=None
+    seed=None,
+    use_avg_reward_wrapper: bool = False
 ):
     """
     Returns a function that builds a new environment by calling appropriate constructors.
@@ -547,6 +575,15 @@ def get_env_factory(
         )
         if seed is not None:
             env.reset(seed=seed)
-        return stable_baselines3.common.monitor.Monitor(env) if monitor else env
+
+        if use_avg_reward_wrapper:
+            env = AvgRewardPerStepWrapper(env)
+            
+        if monitor:
+            env = stable_baselines3.common.monitor.Monitor(env)
+        
+        return env
 
     return _init
+
+

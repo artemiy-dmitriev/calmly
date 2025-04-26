@@ -1,15 +1,42 @@
-# PPO fine-tuning from a behavioral cloning policy
+
 import os
 import sys
 import importlib.util
 import yaml
 import argparse
 import torch
+import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
 from calmly.env import get_env_factory
 from calmly.utils import load_factories
+
+from stable_baselines3.common.callbacks import BaseCallback
+
+class AvgRewardLoggerCallback(BaseCallback):
+    """
+    Logs average reward per step to TensorBoard during training.
+    """
+
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        self.avg_rewards_per_step = []
+
+    def _on_step(self) -> bool:
+        infos = self.locals.get("infos", [])
+        
+        for info in infos:
+            if "avg_reward_per_step" in info:
+                self.avg_rewards_per_step.append(info["avg_reward_per_step"])
+
+        return True
+
+    def _on_rollout_end(self) -> None:
+        if len(self.avg_rewards_per_step) > 0:
+            avg_reward = np.mean(self.avg_rewards_per_step)
+            self.logger.record("rollout/avg_reward_per_step", avg_reward)
+            self.avg_rewards_per_step.clear()
 
 def load_config(config_path: str) -> dict:
     with open(config_path, 'r') as f:
@@ -25,7 +52,7 @@ def train_ppo_model(
     config = load_config(config_path)
 
     if (not config.get("ppo", {}).get("enabled", False)) and (not force):
-        print("PPO training is disabled in config. Change the config file or use --force / force=True to override.")
+        print("PPO training is disabled in config. Enable it or use --force.")
         return
 
     if quiet == False:
@@ -75,7 +102,8 @@ def train_ppo_model(
         maxtem=maxtem,
         mis_angle_min=mis_angle_min,
         mis_angle_max=mis_angle_max,
-        seed=seed
+        seed=seed,
+        use_avg_reward_wrapper=True
     )
 
     envs = SubprocVecEnv([env_factory for _ in range(n_envs)])
@@ -108,12 +136,14 @@ def train_ppo_model(
     model.learn(
         total_timesteps=total_timesteps,
         progress_bar=not quiet,
-        tb_log_name="PPO_MultiEnv"
+        tb_log_name="PPO_MultiEnv",
+        callback=AvgRewardLoggerCallback()
     )
 
     model.save(save_path)
     if not quiet:
         print(f"PPO model saved to {save_path}")
+    envs.close()
 
 # Script entry point
 def main():

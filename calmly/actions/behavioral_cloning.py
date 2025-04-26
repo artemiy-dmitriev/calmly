@@ -55,7 +55,7 @@ def train_bc_model(
     config = load_config(config_path)
 
     if (not config.get("bc", {}).get("enabled", False)) and (not force):
-        print("Behavioral cloning is disabled in config. Change the config file or use --force / force=True to override.")
+        print("Behavioral cloning is disabled in config. Enable it or use --force.")
         return
 
     if quiet==False:
