@@ -48,11 +48,16 @@ ppo:
   mis_angle_max: 2.5e-4
   
 # Step 5: Evaluation
-evaluate:
-  run: true
-  policy_path: "models/ppo_policy.zip"
-  n_episodes: 20
-  output_path: "results/eval_metrics.json"
+evaluation:
+  enabled: true
+  quiet: false
+  n_episodes: 10
+  agent_path: "ppo_training.zip"
+  n_peaks: 3
+  maxtem: 3
+  mis_angle_min: -3.0e-4 
+  mis_angle_max: 3.0e-4
+  seed: 42
 
 # Runtime
 runtime:

@@ -446,16 +446,19 @@ class CavityAlignmentEnv(gym.Env):
             else:
                 # Assuming that we messed the alignment. Terminating immediately
                 terminated = True
+                success = False
                 # Penalty for the failed alignment
                 reward_components['final_result'] = - _r0_to_rb * _r0
         elif self._final_countdown is not None:
             if self._cur_dominance >= self._final_dominance_target:
                 terminated = True
+                success = True
                 # final positive bonus
                 reward_components['final_result'] = _r0_to_rb * _r0
             elif self._final_countdown == 0:
                 # Did not reach the target dominance
                 terminated = True
+                success = False
                 reward_components['final_result'] = - _r0_to_rb * _r0
             else:
                 self._final_countdown -= 1
@@ -463,12 +466,14 @@ class CavityAlignmentEnv(gym.Env):
         # checking if the alignment is hopelessly lost
         elif self._no_peak_steps >= self._MAX_NO_PEAKS:
             terminated = True
-            # this hsould be strongly discouraged
+            success = False
+            # this should be strongly discouraged
             reward_components['final_result'] = - _r0_to_rb * _r0
 
         # truncating if the number of steps exceeds the maximum
         if self._steps_taken>=self._MAX_STEPS:
             truncated = True
+            success = False
             # terminated = True
             # Not necessarily have to add a penaly here if the gradual penalty growing with the step number is introduced
             # reward -= 5*_r0
@@ -482,6 +487,8 @@ class CavityAlignmentEnv(gym.Env):
 
         info['terminated'] = terminated
         info['truncated'] = truncated
+        if terminated or truncated:
+            info['success'] = success
         for k, v in reward_components.items():
             if k not in self.reward_component_keys:
                 raise ValueError(f"""Reward component {k} is not in self.reward_component_keys.

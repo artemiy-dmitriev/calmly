@@ -27,6 +27,7 @@ repository = "https://github.com/artemiy-dmitriev/calmly.git"
 calmly-generate_dataset = "calmly.actions.generate_dataset:main"
 calmly-train_bc = "calmly.actions.behavioral_cloning:main"
 calmly-train_ppo = "calmly.actions.ppo_training:main"
+calmly-evaluate = "calmly.actions.model_evaluation:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
