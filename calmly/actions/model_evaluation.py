@@ -2,7 +2,8 @@ import os
 import yaml
 import torch
 import argparse
-import numpy as np
+import numpy as np    
+from datetime import datetime
 from tqdm import trange
 
 from stable_baselines3 import PPO
@@ -42,7 +43,8 @@ def load_agent(agent_path, device, env):
 def evaluate_model(
     config_path: str,
     quiet: bool = False,
-    force: bool = False
+    force: bool = False,
+    message: str = ""
 ):
     config = load_config(config_path)
 
@@ -136,11 +138,54 @@ def evaluate_model(
     mean_episode_length = np.mean(episode_lengths)
     success_rate = np.mean(successes)
 
-    print("\n=== Evaluation Results ===")
-    print(f"Mean reward per step: {mean_reward_per_step:.3f}")
-    print(f"Mean total reward: {mean_episode_reward:.3f}")
-    print(f"Mean episode length: {mean_episode_length:.1f}")
-    print(f"Success rate: {success_rate * 100:.1f}%")
+    if not quiet:
+        print("\n=== Evaluation Results ===")
+        print(f"Mean reward per step: {mean_reward_per_step:.3f}")
+        print(f"Mean total reward: {mean_episode_reward:.3f}")
+        print(f"Mean episode length: {mean_episode_length:.1f}")
+        print(f"Success rate: {success_rate * 100:.1f}%")
+        if message:
+            print("Comment message:", message)
+
+    eval_log_path = config["evaluation"].get("save_path", "evaluation_results.yaml")
+
+    result_entry = {
+        "datetime": datetime.now().isoformat(),
+        "agent_name": agent_path,
+        "n_episodes": num_episodes,
+        "mean_reward_per_step": float(mean_reward_per_step),
+        "mean_total_reward": float(mean_episode_reward),
+        "mean_episode_length": float(mean_episode_length),
+        "success_rate": float(success_rate),
+        "evaluation_config": {
+            "n_peaks": Npeaks,
+            "maxtem": maxtem,
+            "mis_angle_min": mis_angle_min,
+            "mis_angle_max": mis_angle_max,
+            "seed": seed
+        }
+    }
+
+    if message:
+        result_entry["message"] = message
+
+    if os.path.exists(eval_log_path):
+        with open(eval_log_path, "r") as f:
+            existing_entries = list(yaml.safe_load_all(f)) or []
+    else:
+        existing_entries = []
+
+    existing_entries.append(result_entry)
+
+    dir_path = os.path.dirname(eval_log_path)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
+
+    with open(eval_log_path, "w") as f:
+        yaml.dump_all(existing_entries, f, explicit_start=True)
+    
+    if not quiet:
+        print(f"Saved evaluation results to {eval_log_path}")
 
 # Script entry point
 def main():
@@ -148,13 +193,15 @@ def main():
     parser.add_argument("--config", type=str, default="calmly_config.yaml", help="Path to YAML config file")
     parser.add_argument("-q", "--quiet", action='store_true', help="Do not verbose the output")
     parser.add_argument("-f", "--force", action='store_true', help="Override the enable/disable setting in the config file")
+    parser.add_argument("-m", "--message", type=str, default="", help="Comment message (optional)")
 
     args = parser.parse_args()
 
     evaluate_model(
         config_path=args.config,
         quiet=args.quiet,
-        force=args.force
+        force=args.force,
+        message = args.message
     )
 
 if __name__ == "__main__":

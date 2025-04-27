@@ -51,7 +51,7 @@ ppo:
 evaluation:
   enabled: true
   quiet: false
-  n_episodes: 10
+  n_episodes: 1
   agent_path: "ppo_training.zip"
   n_peaks: 3
   maxtem: 3
