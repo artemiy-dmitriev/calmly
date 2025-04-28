@@ -124,6 +124,7 @@ class CavityAlignment():
         """
         Locks to the lowest mode and looks at the signal at the readout assuming plane waves.
         This signal level is then used to normalise the noise in `cavity_scan()`.
+        
         Parameters
         ----------
         level : float
@@ -320,7 +321,6 @@ class CavityAlignment():
         to reset these, use `self.set_steering_angles)
         If `motor_list` is not specified, all steering motors will be reset.
         If `value_list` is not specified, the counters will be reset to zeroes.
-        
         """
         if motor_list is None:
             motor_list = [k for k in self.steering_motors]
