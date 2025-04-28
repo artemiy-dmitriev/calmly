@@ -147,7 +147,7 @@ def evaluate_model(
         if message:
             print("Comment message:", message)
 
-    eval_log_path = config["evaluation"].get("save_path", "evaluation_results.yaml")
+    eval_log_path = config["evaluation"].get("save_path", "evaluation/evaluation_results.yaml")
 
     result_entry = {
         "datetime": datetime.now().isoformat(),

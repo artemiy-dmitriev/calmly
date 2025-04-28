@@ -58,8 +58,5 @@ evaluation:
   mis_angle_min: -3.0e-4 
   mis_angle_max: 3.0e-4
   seed: 42
+  save_path: "evaluation/evaluation_results.yaml"
 
-# Runtime
-runtime:
-  device: "auto"  # "cpu", "cuda", "mps", or "auto"
-  num_envs: 4

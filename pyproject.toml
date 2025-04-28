@@ -28,6 +28,7 @@ calmly-generate_dataset = "calmly.actions.generate_dataset:main"
 calmly-train_bc = "calmly.actions.behavioral_cloning:main"
 calmly-train_ppo = "calmly.actions.ppo_training:main"
 calmly-evaluate = "calmly.actions.model_evaluation:main"
+calmly-clean = "calmly.actions.clean:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
