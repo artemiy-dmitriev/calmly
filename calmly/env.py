@@ -287,7 +287,27 @@ class CavityAlignmentEnv(gym.Env):
         return observation, info
 
     def step(self, action):
-
+        """
+        Perform one environment step given an action.
+    
+        Parameters
+        ----------
+        action : int
+            Discrete action selected by the agent.
+    
+        Returns
+        -------
+        observation : dict
+            Updated environment observation.
+        reward : float
+            Reward signal after the step.
+        terminated : bool
+            True if the episode ended normally.
+        truncated : bool
+            True if the episode ended due to time or other limit.
+        info : dict
+            Additional diagnostic information.
+        """
         # Moving the appropriate variables
         self._prev_action = self._last_action
         self._prev_delta_dominance = self._cur_delta_dominance

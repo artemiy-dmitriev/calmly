@@ -181,3 +181,9 @@ example_project/data
 example_project/models
 example_project/logs
 example_project/evaluation
+
+# Sphinx build
+docs/build/
+docs/source/generated/
+docs/source/_autosummary
+*.doctree
