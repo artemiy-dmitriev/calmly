@@ -9,7 +9,7 @@ Welcome to calmly: Cavity ALignment with Machine Learning
 =========================================================
 
 **Calmly** is a Python package for **automated optical cavity alignment** using **reinforcement learning**.
-It provides a flexible, modular, and scalable framework for simulating cavity systems, training machine learning agents, and deploying them in both simulation and real experiments.
+It provides a flexible, modular, and scalable framework for simulating optical cavity systems, training machine learning agents for cavity alignment with steering mirrors, and deploying them in both simulation and real experiments.
 
 Calmly supports:
 
@@ -20,6 +20,12 @@ Calmly supports:
 - YAML-based project configuration
 - CLI and HPC-friendly operation
 - Easy extensibility with user-defined cavity simulations and preprocessing
+
+---
+
+IMPORTANT: Current status and Disclaimer
+========================================
+The current version of calmly is an **early alpha**. It has been tested in simulation, and is currently in process of being deployed for real optical cavities by the `gravitational-wave instrumentation group <https://www.sr.bham.ac.uk/instrumental/>`_ at the University of Birmingham, UK. Please contact the author via `email <mailto:artemiydmitriev@gmail.com>`_ or on `Github <https://github.com/artemiy-dmitriev>`_ if you are interested in testing or contributing to the project. Use at your own risk.
 
 ---
 
