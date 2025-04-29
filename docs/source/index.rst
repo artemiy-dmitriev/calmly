@@ -5,10 +5,10 @@
 
 .. calmly documentation master file, created by sphinx-quickstart
 
-Welcome to calmly: Cavity ALignment with Machine Learning
-=========================================================
+calmly: Cavity ALignment with Machine Learning
+==============================================
 
-**Calmly** is a Python package for **automated optical cavity alignment** using **reinforcement learning**.
+Welcome to **Calmly**, a Python package for **automated optical cavity alignment** using **reinforcement learning**.
 It provides a flexible, modular, and scalable framework for simulating optical cavity systems, training machine learning agents for cavity alignment with steering mirrors, and deploying them in both simulation and real experiments.
 
 Calmly supports:

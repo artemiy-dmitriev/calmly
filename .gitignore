@@ -187,3 +187,6 @@ docs/build/
 docs/source/generated/
 docs/source/_autosummary
 *.doctree
+
+# Old notebooks etc.
+*.Retired

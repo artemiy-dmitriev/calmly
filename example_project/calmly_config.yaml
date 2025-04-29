@@ -1,12 +1,12 @@
-# Step 1: User factory definition module (must define cav_sim_factory and scan_processor_factory)
+# User factory definition module (must define cav_sim_factory and scan_processor_factory)
 factories:
   module: "my_factories.py"  # User-defined Python file containing the factory functions
 
-# Step 2: Heuristic dataset generation
+# Heuristic dataset generation
 dataset:
   enabled: true
   quiet: false
-  n_episodes: 5
+  n_episodes: 200
   path: "data/heuristic_dataset.pkl"
   n_peaks: 3
   maxtem: 3
@@ -15,7 +15,7 @@ dataset:
   policy: "default" # or a pickle path
   seed: 42
 
-# Step 3: Behavioral Cloning
+# Behavioral Cloning
 bc:
   enabled: true
   quiet: false
@@ -28,7 +28,7 @@ bc:
   n_epochs: 10
   seed: 42
 
-# Step 4: PPO Fine-Tuning
+# PPO Fine-Tuning
 ppo:
   enabled: true
   quiet: false
@@ -38,25 +38,25 @@ ppo:
   n_envs: 10
   torch_num_threads: 1
   learning_rate: 3e-4
-  total_timesteps: 45000
+  total_timesteps: 400000
   ent_coef: 0.02
   tensorboard_log: "logs/ppo"
   save_path: "models/ppo_policy"
   n_peaks: 3
   maxtem: 3
-  mis_angle_min: -2.5e-4 
-  mis_angle_max: 2.5e-4
+  mis_angle_min: -4e-4 
+  mis_angle_max: 4e-4
   
-# Step 5: Evaluation
+# Evaluation
 evaluation:
   enabled: true
   quiet: false
-  n_episodes: 1
-  agent_path: "ppo_training.zip"
+  n_episodes: 20
+  agent_path: "iterative_policy"
   n_peaks: 3
   maxtem: 3
-  mis_angle_min: -3.0e-4 
-  mis_angle_max: 3.0e-4
+  mis_angle_min: -4.0e-4 
+  mis_angle_max: 4.0e-4
   seed: 42
   save_path: "evaluation/evaluation_results.yaml"
 

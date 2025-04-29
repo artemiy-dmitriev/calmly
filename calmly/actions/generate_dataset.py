@@ -28,7 +28,7 @@ def load_heuristic_policy(policy_path):
         return getattr(mod, func_name)
 
 def generate_dataset(
-    config_path: str,
+    config_path: str = "calmly_config.yaml",
     quiet: bool = False,
     force: bool = False
 ):

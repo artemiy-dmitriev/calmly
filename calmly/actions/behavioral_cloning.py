@@ -48,7 +48,7 @@ def load_dataset(dataset_path: str) -> Transitions:
     )
 
 def train_bc_model(
-    config_path: str,
+    config_path: str = "calmly_config.yaml",
     quiet: bool = False,
     force: bool = False
 ):

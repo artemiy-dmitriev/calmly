@@ -119,16 +119,6 @@ class CavityScanPreProcess():
         self.params.update(kwargs)
 
     # TODO:
-    # 1. Apply the roll so that the array starts at the largest peak before calling find_peaks -- DONE
-    # 2. (can be added later) If averaging the scan, average the data at this point to smoothen the noise out -- DONE
-    # 3. Concatenate the data with part of itself (peak_width_upper_limit_in_FSRs portion) -- DONE
-    # 4. Find the peaks -- DONE
-    # 5. Get rid of any extra peaks in the result (We are only concerned by the one that is at the beginning) -- DONE
-
-    # TODO:
-    # Add bypassing of some pre-processing steps when using the simulation to speed-up the training. -- DONE
-
-    # TODO:
     # Potentially add a moving average filter before applying the roll to center more precisely at the highest peak.
 
     # TODO:
@@ -352,7 +342,7 @@ class CavityScanPreProcess():
             for k in range(Npeaks):
                 peak_dominances[k] = y1c[int(props['left_ips'][k]):int(props['right_ips'][k])+1].sum() / sum_y1
         elif dominance_type == 'peak_height':
-            # Dominances defined as peak heights divided by the refernce level
+            # Dominances defined as peak heights divided by the reference level
             # If the signal reference was specified, y1 will be already normalised by it by now
             if self.params['signal_reference_level'] is None:
                 raise ValueError("signal_reference_level in self.params must be initialised if using peak heights as dominances.")

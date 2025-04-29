@@ -43,7 +43,7 @@ def load_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 def train_ppo_model(
-    config_path: str,
+    config_path: str = "calmly_config.yaml",
     quiet: bool = False,
     force: bool = False,
     continue_training: bool = False,

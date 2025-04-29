@@ -41,7 +41,7 @@ def load_agent(agent_path, device, env):
         raise ValueError(f"Unknown agent format: {agent_path}")
 
 def evaluate_model(
-    config_path: str,
+    config_path: str = "calmly_config.yaml",
     quiet: bool = False,
     force: bool = False,
     message: str = ""
