@@ -166,6 +166,49 @@ class CavityAlignment():
         """
         for axis,min_value,max_value in zip(parameter_list, min_value_list, max_value_list):
             self.add_misalignment_axis(axis, min_value, max_value)
+
+    def set_all_misalignment_limits(self,
+                                     min_value : float = None,
+                                     max_value : float = None
+                                    ) -> None:
+        """
+        Set the same min_value and/or max value for all previously specified misalignment axes.
+        """
+        for axis_name in self.misalignment_axes.keys():
+            self.set_axis_misalignment_limits(
+                axis_name,
+                min_value=min_value,
+                max_value=max_value
+            )
+
+
+    def set_axis_misalignment_limits(self,
+                                     axis : finesse.parameter.Parameter | str,
+                                     *,
+                                     min_value : float = None,
+                                     max_value : float = None
+                                    ) -> None:
+        """
+        Update the upper and/or lower misalignment limits for the given axis.
+        Will throw a `ValueError` if the specified axis is not found in `self.misalignment_axes`.
+        """
+        if isinstance(axis, finesse.parameter.Parameter):
+            axis_obj = axis
+            axis_name = axis.full_name
+        elif isinstance(axis, str):
+            axis_name = axis
+            axis_obj = self.get_parameter_by_full_name(axis)
+        else:
+            raise TypeError(f"`axis` must be a string or a Finesse parameter, not {type(axis)}.")
+
+        if axis_name in self.misalignment_axes:
+            axis_obj, orig_min, orig_max = self.misalignment_axes[axis_name]
+            new_min = float(min_value) if min_value is not None else orig_min
+            new_max = float(max_value) if max_value is not None else orig_max
+            self.misalignment_axes[axis_name] = (axis_obj, new_min, new_max)
+        else:
+            raise ValueError(f"Could not find {axis_name} in the list of misalignment axes")
+            
     def add_misalignment_axis(self,
                               axis : finesse.parameter.Parameter | str,
                               min_value : float,

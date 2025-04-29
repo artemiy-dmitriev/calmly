@@ -80,7 +80,7 @@ class CavityAlignmentEnv(gym.Env):
         # The following settings control how the action noise is applied (only during training)
         self._EXPLORATION_START       = 0.25     # Initial chance to use a random action instead of the predicted one
         self._EXPLORATION_END         = 0.01     # Final chance of random action at the end of the exploration period
-        self._EXPLORATION_DECAY_STEPS = 200_000  # Number of steps in the exploration period
+        self._EXPLORATION_DECAY_STEPS = 500_000  # Number of steps in the exploration period
 
         # Number of episodes between consecutive misalignments
         self.Nmisalign = Nmisalign
@@ -571,9 +571,9 @@ def get_env_factory(
     algo="PPO",
     Nmisalign = 1,
     Npeaks = 3,
-    maxtem = 3,
-    mis_angle_min=-2e-4,
-    mis_angle_max=2e-4,
+    maxtem = None,
+    mis_angle_min=None,
+    mis_angle_max=None,
     seed=None,
     use_avg_reward_wrapper: bool = False
 ):
@@ -600,6 +600,11 @@ def get_env_factory(
             algo=algo,
             Nmisalign=Nmisalign
         )
+
+        env.cav_sim.set_all_misalignment_limits(mis_angle_min, mis_angle_max)
+        if maxtem is not None:
+            env.cav_sim.set_maxtem(maxtem)
+        
         if seed is not None:
             env.reset(seed=seed)
 
