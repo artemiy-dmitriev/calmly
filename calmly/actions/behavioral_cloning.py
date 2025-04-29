@@ -91,7 +91,7 @@ def train_bc_model(
     torch.set_num_threads(torch_num_threads)
 
     cav_sim_factory, scan_proc_factory = load_factories(factory_module)
-    
+        
     env_factory = get_env_factory(
         cav_sim_factory,
         scan_proc_factory,
@@ -102,12 +102,19 @@ def train_bc_model(
         Npeaks = Npeaks,
         maxtem = maxtem,
         mis_angle_min=mis_angle_min,
-        mis_angle_max=mis_angle_max,
-        seed=seed
+        mis_angle_max=mis_angle_max
     )
+    
+    # need to add rank to avoid initialising subprocesses with the same seed
+    def make_env(rank, base_seed=seed):
+        def _init():
+            env = env_factory()
+            env.reset(seed=base_seed + rank)
+            return env
+        return _init
 
     from stable_baselines3.common.vec_env import DummyVecEnv
-    envs = DummyVecEnv([env_factory for _ in range(n_envs)])
+    envs = DummyVecEnv([make_env(i) for i in range(n_envs)])
 
     custom_policy = PPOMultiInputPolicy(
         observation_space=envs.observation_space,

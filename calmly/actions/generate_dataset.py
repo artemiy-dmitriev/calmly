@@ -64,8 +64,8 @@ def generate_dataset(
 
     dataset = []
     episode_iterator = trange(n_episodes) if not quiet else range(n_episodes)
+    env = env_factory()
     for _ in episode_iterator:
-        env = env_factory()
         obs, info = env.reset()
 
         while True:
@@ -75,7 +75,7 @@ def generate_dataset(
             if terminated or truncated:
                 break
 
-        env.close()
+    env.close()
 
     if not quiet:
         print(f"Saving dataset with {len(dataset)} samples to {dataset_path}...")

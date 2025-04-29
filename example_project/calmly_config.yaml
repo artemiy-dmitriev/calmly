@@ -26,7 +26,7 @@ bc:
   net_arch: [64, 64]
   learning_rate: 1e-4
   n_epochs: 10
-  seed: 42
+  seed: 142
 
 # PPO Fine-Tuning
 ppo:
@@ -48,6 +48,7 @@ ppo:
   maxtem: 5
   mis_angle_min: -2.0e-4 
   mis_angle_max: 2.0e-4
+  seed: 242
   
 # Evaluation
 evaluation:
@@ -59,6 +60,6 @@ evaluation:
   maxtem: 5
   mis_angle_min: -2.0e-4 
   mis_angle_max: 2.0e-4
-  seed: 42
+  seed: 342
   save_path: "evaluation/evaluation_results.yaml"
 

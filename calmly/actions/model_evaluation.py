@@ -85,8 +85,6 @@ def evaluate_model(
         seed=seed
     )
 
-    # eval_env = DummyVecEnv([env_factory])
-    # model = PPO.load(model_path, env=eval_env, device=device)
     env = env_factory()
 
     agent = load_agent(agent_path, device, env)

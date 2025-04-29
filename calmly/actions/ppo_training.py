@@ -130,11 +130,18 @@ def train_ppo_model(
         mis_angle_min=mis_angle_min,
         mis_angle_max=mis_angle_max,
         exploration_settings=exploration_settings,
-        seed=seed,
         use_avg_reward_wrapper=True
     )
 
-    envs = SubprocVecEnv([env_factory for _ in range(n_envs)])
+    # need to add rank to avoid initialising subprocesses with the same seed
+    def make_env(rank, base_seed=seed):
+        def _init():
+            env = env_factory()
+            env.reset(seed=base_seed + rank)
+            return env
+        return _init
+        
+    envs = SubprocVecEnv([make_env(i) for i in range(n_envs)])
 
     if continue_training:
         if skip_bc and (not quiet):
