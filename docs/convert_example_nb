@@ -1,0 +1,2 @@
+#!/bin/bash
+jupyter-nbconvert ../example_project/calmly_example.ipynb --to rst --output quickstart --output-dir ./source/

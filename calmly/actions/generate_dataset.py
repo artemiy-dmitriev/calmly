@@ -29,10 +29,12 @@ def load_heuristic_policy(policy_path):
 
 def generate_dataset(
     config_path: str = "calmly_config.yaml",
+    config : dict = None,
     quiet: bool = False,
     force: bool = False
 ):
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
 
     if (not config.get("dataset", {}).get("enabled", False)) and (not force):
         print("Dataset generation is disabled in config. Enable it or use --force.")

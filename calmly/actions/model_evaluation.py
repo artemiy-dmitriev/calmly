@@ -42,11 +42,13 @@ def load_agent(agent_path, device, env):
 
 def evaluate_model(
     config_path: str = "calmly_config.yaml",
+    config : dict = None,
     quiet: bool = False,
     force: bool = False,
     message: str = ""
 ):
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
 
     if (not config.get("evaluation", {}).get("enabled", False)) and (not force):
         print("Evaluation is disabled in config. Enable it or use --force.")

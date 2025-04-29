@@ -44,12 +44,14 @@ def load_config(config_path: str) -> dict:
 
 def train_ppo_model(
     config_path: str = "calmly_config.yaml",
+    config : dict = None,
     quiet: bool = False,
     force: bool = False,
     continue_training: bool = False,
     skip_bc: bool = False
 ):
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
 
     if (not config.get("ppo", {}).get("enabled", False)) and (not force):
         print("PPO training is disabled in config. Enable it or use --force.")

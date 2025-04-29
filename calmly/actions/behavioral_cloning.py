@@ -49,10 +49,12 @@ def load_dataset(dataset_path: str) -> Transitions:
 
 def train_bc_model(
     config_path: str = "calmly_config.yaml",
+    config : dict = None,
     quiet: bool = False,
     force: bool = False
 ):
-    config = load_config(config_path)
+    if config is None:
+        config = load_config(config_path)
 
     if (not config.get("bc", {}).get("enabled", False)) and (not force):
         print("Behavioral cloning is disabled in config. Enable it or use --force.")
