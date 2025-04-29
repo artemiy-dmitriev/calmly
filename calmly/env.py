@@ -78,9 +78,7 @@ class CavityAlignmentEnv(gym.Env):
         # TODO: try using two step sizes (for coarse and fine alignment)
 
         # The following settings control how the action noise is applied (only during training)
-        self._EXPLORATION_START       = 0.25     # Initial chance to use a random action instead of the predicted one
-        self._EXPLORATION_END         = 0.01     # Final chance of random action at the end of the exploration period
-        self._EXPLORATION_DECAY_STEPS = 500_000  # Number of steps in the exploration period
+        self._exploration_settings = {}
 
         # Number of episodes between consecutive misalignments
         self.Nmisalign = Nmisalign
@@ -241,7 +239,22 @@ class CavityAlignmentEnv(gym.Env):
             "Npeaks_found" : self._Npeaks_found
         }
         return obs, info
-        
+
+    def update_exploration_settings(self, settings : dict) -> None:
+        """
+        Updates the internal exloration settings that control the action noise in PPO training.
+
+        Parameters
+        ----------
+        settings : dict
+            Dictionary of settings to be updated in the environment. May contain the following keys:
+
+            - 'enabled' (bool): Whether or not to use the action noise.
+            - 'decay_steps' (int): Number of steps to use action noise for
+            - 'initial_probability' (float): Initial chance of choosing a random action instead of the predicted one.
+            - 'final_probability' (float): Final chance (after decay_steps) of choosing a random action.
+        """
+        self._exploration_settings.update(settings)
 
     def reset(self, seed=None):
         # Seeding the RNG
@@ -315,9 +328,13 @@ class CavityAlignmentEnv(gym.Env):
         self._prev_r_dominance = self._cur_r_dominance
         
         # Include action noise in the PPO training
-        if self._training and (self._algorithm=="PPO") and (self._steps_taken < self._EXPLORATION_DECAY_STEPS):
-            current_exploration_chance = self._EXPLORATION_START + \
-            (self._EXPLORATION_END - self._EXPLORATION_START)/self._EXPLORATION_DECAY_STEPS * self._steps_taken
+        if self._training and \
+        (self._algorithm=="PPO") and \
+        (self._exploration_settings.get("enabled", False) == True) and \
+        (self._steps_taken < self._exploration_settings["decay_steps"]):
+            current_exploration_chance = self._exploration_settings["initial_probability"] + \
+            (self._exploration_settings["final_probability"] - self._exploration_settings["initial_probability"])/ \
+            self._exploration_settings["decay_steps"] * self._steps_taken
             if self.np_random.random() < current_exploration_chance:
                 action = self.np_random.integers(self.action_space.n)
         # Moving one motor by a fixed number of counts
@@ -574,6 +591,7 @@ def get_env_factory(
     maxtem = None,
     mis_angle_min=None,
     mis_angle_max=None,
+    exploration_settings=None,
     seed=None,
     use_avg_reward_wrapper: bool = False
 ):
@@ -602,6 +620,10 @@ def get_env_factory(
         )
 
         env.cav_sim.set_all_misalignment_limits(mis_angle_min, mis_angle_max)
+
+        if exploration_settings is not None:
+            env.update_exploration_settings(exploration_settings)
+            
         if maxtem is not None:
             env.cav_sim.set_maxtem(maxtem)
         

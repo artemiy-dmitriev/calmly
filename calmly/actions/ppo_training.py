@@ -81,6 +81,32 @@ def train_ppo_model(
     maxtem = config["ppo"]["maxtem"]
     mis_angle_min = config["ppo"]["mis_angle_min"]
     mis_angle_max = config["ppo"]["mis_angle_max"]
+    exploration_settings = config["ppo"].get(
+        "exploration_settings",
+        {
+            "enabled" : False
+        }
+    )
+    exploration_settings['decay_steps'] = int(exploration_settings.get(
+        'decay_steps',
+        total_timesteps/2
+    ))
+    exploration_settings['initial_probability'] = float(exploration_settings.get(
+        'initial_probability',
+        0.25
+    ))
+    exploration_settings['final_probability'] = float(exploration_settings.get(
+        'final_probability',
+        0.01
+    ))
+    
+    if not quiet:
+        if exploration_settings["enabled"]:
+            print("Will introduce action noise with the following settings:")
+            for k, v in exploration_settings.items():
+                print(k, ':', v)
+        else:
+            print("Action noise is switched off in the environment (change with 'exploration_settings' in the config file)")
 
     torch.set_num_threads(torch_num_threads)
 
@@ -88,6 +114,7 @@ def train_ppo_model(
         device = torch.device(device_name)
     else:
         device = torch.device("cpu")
+
 
     cav_sim_factory, scan_proc_factory = load_factories(factory_module)
 
@@ -102,6 +129,7 @@ def train_ppo_model(
         maxtem=maxtem,
         mis_angle_min=mis_angle_min,
         mis_angle_max=mis_angle_max,
+        exploration_settings=exploration_settings,
         seed=seed,
         use_avg_reward_wrapper=True
     )
