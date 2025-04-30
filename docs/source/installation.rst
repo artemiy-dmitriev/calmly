@@ -3,19 +3,26 @@ Installation
 
 To install **calmly**, you will need Python >= 3.9 and `pip`.
 
-You can install the package locally using:
+It is strongly advised to try `calmly` in a separate conda environment. Install conda of any flavour and run
 
 .. code-block:: bash
 
-   pip install git+https://github.com/artemiy-dmitriev/calmly.git
+   conda create --name calmly python pip
+   conda activate calmly
 
-Or clone the repository and install it manually:
+You can then clone the repository and install it manually:
 
 .. code-block:: bash
 
    git clone https://github.com/artemiy-dmitriev/calmly.git
    cd calmly
-   pip install .
+   pip install -e .
+
+Or install the package directly (currently not recommended) with pip:
+
+.. code-block:: bash
+
+   pip install git+https://github.com/artemiy-dmitriev/calmly.git
 
 Dependencies
 ------------
