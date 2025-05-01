@@ -7,6 +7,136 @@ from enum import Enum
 from .simulator import CavityAlignment
 from .preprocessing import CavityScanPreProcess
 
+def load_env_settings (
+    env_settings: dict | str
+) -> dict:
+    """
+    Returns a dictionary of gym environment settings that can be used to configure an instance of `calmly.env.CavityAlignmentEnv`.
+    If `env_settings` is a dict, it is returned unchanged; if it is a string, it is assumed that the string contains a path 
+    to a yaml file with settings, which is imported and returned.
+    """
+    if isinstance(env_settings, dict):
+        return env_settings
+    elif isinstance(env_settings, str):
+        with open(env_settings, 'r') as f:
+            return yaml.safe_load(f)
+    else:
+        raise TypeError("env_settings must be dict of settings or str containing path to the settings file.")
+
+_reward_component_names = [
+    'total',
+    'single_peak',
+    'no_peaks',
+    'main_peak_improvement',
+    'main_peak_dominance',
+    'other_peaks_dominance',
+    'time',
+    'motor_usage_dist',
+    'motor_switching',
+    'final_result'
+]
+
+_default_env_settings = {
+    'general': {
+        # Maximum allowed number of steps before truncation
+        'max_steps': 1000,
+        # Number of steps without improvement before cutoff
+        'max_no_improv_steps': 20,
+        # Number of steps without seeing any peaks before giving up
+        'max_no_peaks_steps': 20,
+        # Max number of steps to reach the target
+        'final_countdown_steps': 10,
+        # After the "no improvement" range, the agent will need to climb back to the best result
+        # The following constant sets how close it must be to the previously obtained best result for termination
+        'allowed_best_result_annealing': 0.95
+    },
+    # Number of counts in each motor action in discrete space
+    # TODO: try using two step sizes (for coarse and fine alignment)
+    'motor_counts_per_step': {
+        'SM1': {
+            'yaw': {
+                'neg': 3,
+                'pos': 3
+            },
+            'pitch': {
+                'neg': 3,
+                'pos': 3
+            }
+        },
+        'SM2': {
+            'yaw': {
+                'neg': 3,
+                'pos': 3
+            },
+            'pitch': {
+                'neg': 3,
+                'pos': 3
+            }
+        }
+    },
+    'reward_components': {
+        'general': {
+            # common reward multiplier for all reward components
+            'overall_reward_scaling': 1.0,
+            # Log-squeeze the reward
+            'reward_log_compression': False
+        },
+        'single_peak': {
+            'enabled' : True,
+            'reward': 1.0
+        },
+        'no_peaks': {
+            'enabled' : True,
+            'penalty': 1.0
+        },
+        'main_peak_improvement': {
+            'enabled': True,
+            'coef': 850.0,
+            'allow_negative': False
+        },
+        'other_peaks_improvement': {
+            'enabled': False,
+            'coef': 425.0,
+            'allow_negative': False
+        },
+        'main_peak_dominance': {
+            'enabled' : True,
+            'coef': 5.0
+        },
+        'other_peaks_dominance': {
+            'enabled' : True,
+            'coef': 2.5
+        },
+        'time': {
+            'enabled': True,
+            'target_steps': 280
+        },
+        'motor_usage_dist': {
+            'enabled': True,
+            'coef': 10.0
+        },
+        'motor_switching': {
+            'enabled': True,
+            'scaling': 1.0,
+            'good_motor_repeat_coef': 1.0,
+            'bad_motor_switch_coef': 1.0,
+            'good_motor_switch_coef': 1.0,
+            'bad_motor_repeat_coef': 1.0,
+            'good_direction_switch_coef': 1.0,
+            'bad_switched_motor_although_could_switch_direction': 0.2
+        },
+        'final_result': {
+            'enabled': True,
+            'scaling': 308.0,
+            'success_reward': 1.0,
+            'no_improv_cutoff_penalty': 1.0,
+            'final_countdown_cutoff_penalty': 1.0,
+            'peaks_lost_cutoff_penalty': 1.0,
+            'steplimit_truncation_penalty': 0.2
+        }
+    }
+}
+
 class Actions_1(Enum):
     DECREASE_SM1_YAW = 0
     INCREASE_SM1_YAW = 1
@@ -25,7 +155,8 @@ class CavityAlignmentEnv(gym.Env):
                  algo : str = "PPO",
                  training : bool = False,
                  Nmisalign : int = 1,
-                 N_averages : int = 3
+                 N_averages : int = 3,
+                 env_settings : dict | str = None
                 ):
         super(CavityAlignmentEnv, self).__init__() # Probably not needed?
 
@@ -34,6 +165,11 @@ class CavityAlignmentEnv(gym.Env):
         self._N_averages = N_averages
 
         self.Npeaks = Npeaks
+
+        # Loading settings (first loading the defaults and then updating with env_settings if given)
+        self._env_settings = _default_env_settings
+        if env_settings is not None:
+            self._env_settings.update(load_env_settings(env_settings))
 
         # Discrete action space: fixed forward or backward step for each motor (8 in total)
         self.action_space = spaces.Discrete(8)
@@ -61,31 +197,12 @@ class CavityAlignmentEnv(gym.Env):
         # An object used for pre-processing cavity scans
         self.scan_preprocess = scan_preprocess
 
-        # Number of steps without improvement before cutoff
-        self._MAX_NO_IMPROVEMENT = 20
-        # After the "no improvement" range, the agent will need to climb back to the best result
-        # The following constant sets how close it must be to the previously obtained best result for termination
-        self._BEST_RESULT_ANNEALING = 0.95
-        # Max number of steps to reach the target
-        self._MAX_FINAL_COUNTDOWN_STEPS = 10
-        # Number of steps without seeing any peaks before giving up
-        self._MAX_NO_PEAKS = 20
-        # Maximum allowed step count for one motor operation (assuming the same one on each motor)
-        # when using SAP
-        self._SAP_MAX_COUNTS_PER_STEP=50
-        # Number of counts in each motor action in discrete space (to use with PPO or DQN)
-        self._DISCRETE_MOTOR_STEP_1 = 3
-        # TODO: try using two step sizes (for coarse and fine alignment)
-
         # The following settings control how the action noise is applied (only during training)
         self._exploration_settings = {}
 
         # Number of episodes between consecutive misalignments
         self.Nmisalign = Nmisalign
         self._episode_counter = 0
-        
-        # # Maximum allowed number of steps
-        self._MAX_STEPS=1000
         
         self._action_motor = {
             Actions_1.INCREASE_SM1_PITCH.value : 'SM1.ybeta',
@@ -98,28 +215,18 @@ class CavityAlignmentEnv(gym.Env):
             Actions_1.DECREASE_SM2_YAW.value : 'SM2.xbeta'
         }
         self._action_counts = {
-            Actions_1.DECREASE_SM1_PITCH.value : -self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.INCREASE_SM1_PITCH.value : self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.DECREASE_SM1_YAW.value : -self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.INCREASE_SM1_YAW.value : self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.DECREASE_SM2_PITCH.value : -self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.INCREASE_SM2_PITCH.value : self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.DECREASE_SM2_YAW.value : -self._DISCRETE_MOTOR_STEP_1,
-            Actions_1.INCREASE_SM2_YAW.value : self._DISCRETE_MOTOR_STEP_1
+            Actions_1.DECREASE_SM1_PITCH.value : -self._env_settings['motor_counts_per_step']['SM1']['pitch']['neg'],
+            Actions_1.INCREASE_SM1_PITCH.value : self._env_settings['motor_counts_per_step']['SM1']['pitch']['pos'],
+            Actions_1.DECREASE_SM1_YAW.value : -self._env_settings['motor_counts_per_step']['SM1']['yaw']['neg'],
+            Actions_1.INCREASE_SM1_YAW.value : self._env_settings['motor_counts_per_step']['SM1']['yaw']['pos'],
+            Actions_1.DECREASE_SM2_PITCH.value : -self._env_settings['motor_counts_per_step']['SM2']['pitch']['neg'],
+            Actions_1.INCREASE_SM2_PITCH.value : self._env_settings['motor_counts_per_step']['SM2']['pitch']['pos'],
+            Actions_1.DECREASE_SM2_YAW.value : -self._env_settings['motor_counts_per_step']['SM2']['yaw']['neg'],
+            Actions_1.INCREASE_SM2_YAW.value : self._env_settings['motor_counts_per_step']['SM2']['yaw']['pos']
         }
 
-        self.reward_component_keys = [
-            'total',
-            'single_peak',
-            'no_peaks',
-            'main_peak_improvement',
-            'main_peak_dominance',
-            'other_peaks_dominance',
-            'time',
-            'motor_usage_dist',
-            'motor_switching',
-            'final_result'
-        ]
+        # This is mostly used for debugging, can be removed later
+        self.reward_component_keys = _reward_component_names
         
     def _take_cavity_scan(self, write_values_to_model=True):
         """
@@ -349,7 +456,7 @@ class CavityAlignmentEnv(gym.Env):
 
         ######## TEMPORARY SECTION ########
         ######## REWARD SCALING ###########
-        _r0 = 1 # average reward per step (should not matter)
+        
         _ddom_to_r = 846 # 846 # proportionality coefficient r = ddom_to_r* ddom
         _drdom_to_r = _ddom_to_r / 2 # for the rest of the peaks
         _dom_to_r = 5# proportionality coefficient r = dom_to_r* dom
@@ -360,7 +467,8 @@ class CavityAlignmentEnv(gym.Env):
         _single_peak_reward = 1 # Additional reward for a single peak (will be scaled by _r0)
         ###### END OF TEMP SECTION ########
 
-        # reward = 0
+        _rconf = self._env_settings['reward_components']
+        _r0 = _rconf['general']['overall_reward_scaling'] # average reward per step (should not matter)
         reward_components = {}
         
         if self._Npeaks_found == 0:
@@ -368,25 +476,42 @@ class CavityAlignmentEnv(gym.Env):
             self._no_peak_steps += 1
             self._no_improvement_steps = 0
 
-            reward_components['no_peaks'] = - _no_peaks_penalty * _r0 # penalty for loosing all the peaks
+            if _rconf['no_peaks']['enabled']:
+                reward_components['no_peaks'] = - _rconf['no_peaks']['penalty'] * _r0 # penalty for loosing all the peaks
         else:
             # resetting the counter for consecutive steps with no peaks
             self._no_peak_steps = 0
             
             if self._Npeaks_found == 1:
                 # We have a single peak
-                reward_components['single_peak'] = _single_peak_reward * _r0
+                if _rconf['single_peak']['enabled']:
+                    reward_components['single_peak'] = _rconf['single_peak']['reward'] * _r0
 
         # Reward for improving the main peak
-        reward_components['main_peak_improvement'] = max(_ddom_to_r * self._cur_delta_dominance * _r0, 0)
+        if _rconf['main_peak_improvement']['enabled']:
+            if _rconf['main_peak_improvement']['allow_negative']:
+                reward_components['main_peak_improvement'] = _rconf['main_peak_improvement']['coef'] * self._cur_delta_dominance * _r0
+            else:
+                reward_components['main_peak_improvement'] = max(_rconf['main_peak_improvement']['coef'] * self._cur_delta_dominance * _r0, 0)
+                
         # Reward for keeping the main peak good
-        reward_components['main_peak_dominance'] = _dom_to_r * self._cur_dominance * _r0 
-        # reward -= _drdom_to_r * self._cur_delta_r_dominance * _r0 # Penalty for improving other peaks
+        if _rconf['main_peak_dominance']['enabled']:
+            reward_components['main_peak_dominance'] = _rconf['main_peak_dominance']['coef'] * self._cur_dominance * _r0
+        
+        # Penalty for improving other peaks
+        if _rconf['other_peaks_improvement']['enabled']:
+            if _rconf['other_peaks_improvement']['allow_negative']:
+                reward_components['other_peaks_improvement'] = -_rconf['other_peaks_improvement']['coef'] * self._cur_delta_r_dominance * _r0
+            else:
+                reward_components['other_peaks_improvement'] = -max(_rconf['other_peaks_improvement']['coef'] * self._cur_delta_r_dominance * _r0, 0)
+
         # Penalty for keeping the other peaks good
-        reward_components['other_peaks_dominance'] = - _rdom_to_r * self._cur_r_dominance * _r0 
+        if _rconf['other_peaks_dominance']['enabled']:
+            reward_components['other_peaks_dominance'] = - _rconf['other_peaks_dominance']['coef'] * self._cur_r_dominance * _r0 
 
         # small penalty growing with the number of steps
-        reward_components['time'] = - self._steps_taken * _r0 / _Nmax_steps
+        if _rconf['time']['enabled']: 
+            reward_components['time'] = - self._steps_taken * _r0 / _rconf['time']['target_steps']
         
         cur_motor_index, cur_motor_direction = self.action_to_motor_index_and_dir(self._last_action) \
         if self._last_action is not None \
@@ -416,48 +541,51 @@ class CavityAlignmentEnv(gym.Env):
         
         uniform_dist = np.ones_like(usage_dist) / len(usage_dist)
         usage_dist_penalty_unscaled = np.linalg.norm(usage_dist - uniform_dist)
-        # Penalty for the deviation of the motor usage distribution from the uniform distribution
-        reward_components['motor_usage_dist'] = - usage_dist_penalty_unscaled * 10 * _r0
         
-        if self._prev_delta_dominance is None:
-            # This means we are at step 1, so we are bypassing this logical block entirely
-            pass
-        elif self._prev_delta_dominance == 0:
-            # This means that the peaks were lost
-            # TODO: maybe add a reward if self._cur_delta_dominance > 0 to encourage the restoration
-            # although it will already be reflected in the reward for cur_dominance and cur_delta_dominance
-            # TODO: check if the history of actions since the last best result is available
-            # and apply it in reverse for a large reward if so (should be a separate action)
-            pass
-        elif self._prev_delta_dominance > 0:
-            # Alignment was improved during the previous step
-            if same_motor and same_direction:
-                # Repeating is the right action -- adding a positive reward
-                reward_components['motor_switching'] = 1 * _r0
-            else:
-                # All other actions are equally bad -- adding the same penalty
-                reward_components['motor_switching'] = - 1 * _r0
-        elif (self._prev_delta_dominance < 0) and (self._already_changed_direction):
-            # Alignment was impaired during the previous step and we had already tried changing the motor direction
-            if not same_motor:
-                # Changing the motor is the right action -- adding a positive reward
-                reward_components['motor_switching'] = 1 * _r0
-            else:
-                # Staying on the same motor is wrong, regardless of the direction
-                # Adding a penalty
-                reward_components['motor_switching'] = - 1 * _r0
-        elif (self._prev_delta_dominance < 0) and (not self._already_changed_direction):
-            # Alignment was impaired during the previous step and we had not yet tried changing the motor direction
-            if same_motor and (not same_direction):
-                # Changing the direction was the right thing to do, adding a reward
-                reward_components['motor_switching'] = 1 * _r0
-            elif not same_motor:
-                # Changing the motor wasn't the optimal action but not too bad
-                # No reward or small penalty
-                reward_components['motor_switching'] = - 0.2 * _r0
-            else:
-                # Repeating the action that impaired the alignment was a bad idea. Adding a penalty
-                reward_components['motor_switching'] = - 1 * _r0
+        # Penalty for the deviation of the motor usage distribution from the uniform distribution
+        if _rconf['motor_usage_dist']['enabled']: 
+            reward_components['motor_usage_dist'] = - usage_dist_penalty_unscaled * _rconf['motor_usage_dist']['coef'] * _r0
+
+        if _rconf['motor_switching']['enabled']:
+            if self._prev_delta_dominance is None:
+                # This means we are at step 1, so we are bypassing this logical block entirely
+                pass
+            elif self._prev_delta_dominance == 0:
+                # This means that the peaks were lost
+                # TODO: maybe add a reward if self._cur_delta_dominance > 0 to encourage the restoration
+                # although it will already be reflected in the reward for cur_dominance and cur_delta_dominance
+                # TODO: check if the history of actions since the last best result is available
+                # and apply it in reverse for a large reward if so (should be a separate action)
+                pass
+            elif self._prev_delta_dominance > 0:
+                # Alignment was improved during the previous step
+                if same_motor and same_direction:
+                    # Repeating is the right action -- adding a positive reward
+                    reward_components['motor_switching'] = _rconf['motor_switching']['good_motor_repeat_coef'] * _r0
+                else:
+                    # All other actions are equally bad -- adding the same penalty
+                    reward_components['motor_switching'] = - _rconf['motor_switching']['bad_motor_switch_coef'] * _r0
+            elif (self._prev_delta_dominance < 0) and (self._already_changed_direction):
+                # Alignment was impaired during the previous step and we had already tried changing the motor direction
+                if not same_motor:
+                    # Changing the motor is the right action -- adding a positive reward
+                    reward_components['motor_switching'] = _rconf['motor_switching']['good_motor_switch_coef'] * _r0
+                else:
+                    # Staying on the same motor is wrong, regardless of the direction
+                    # Adding a penalty
+                    reward_components['motor_switching'] = - _rconf['motor_switching']['bad_motor_repeat_coef'] * _r0
+            elif (self._prev_delta_dominance < 0) and (not self._already_changed_direction):
+                # Alignment was impaired during the previous step and we had not yet tried changing the motor direction
+                if same_motor and (not same_direction):
+                    # Changing the direction was the right thing to do, adding a reward
+                    reward_components['motor_switching'] = _rconf['motor_switching']['good_direction_switch_coef'] * _r0
+                elif not same_motor:
+                    # Changing the motor wasn't the optimal action but not too bad
+                    # No reward or small penalty
+                    reward_components['motor_switching'] = - _rconf['motor_switching']['bad_switched_motor_although_could_switch_direction'] * _r0
+                else:
+                    # Repeating the action that impaired the alignment was a bad idea. Adding a penalty
+                    reward_components['motor_switching'] = - _rconf['motor_switching']['bad_motor_repeat_coef'] * _r0
                 
         # counting consecutive steps with no improvement
         # TODO: possibly track the moving average instead
@@ -465,59 +593,65 @@ class CavityAlignmentEnv(gym.Env):
         if self._cur_dominance > self._best_dominance:
             self._best_dominance = self._cur_dominance
             self._no_improvement_steps = 0
-        # elif (self._Npeaks_found == 1) and (self._cur_dominance > self._best_dominance*self._BEST_RESULT_ANNEALING):
-        #     self._no_improvement_steps += 1
-        # else:
-        #     self._no_improvement_steps = 0 # these steps are only increasing if the alignment stays good
         else:
             self._no_improvement_steps += 1
 
         terminated = False
         truncated = False
         
-        if (self._final_countdown is None) and (self._no_improvement_steps >= self._MAX_NO_IMPROVEMENT):
+        if (self._final_countdown is None) and (self._no_improvement_steps >= self._env_settings['general']['max_no_improv_steps']):
             if self._Npeaks_found == 1:
                 # Assuming that we have found the best dominance. Setting the final target dominance:
-                self._final_dominance_target = self._best_dominance * self._BEST_RESULT_ANNEALING
-                self._final_countdown = self._MAX_FINAL_COUNTDOWN_STEPS
+                self._final_dominance_target = self._best_dominance * self._env_settings['general']['allowed_best_result_annealing']
+                self._final_countdown = self._env_settings['general']['final_countdown_steps']
             else:
                 # Assuming that we messed the alignment. Terminating immediately
                 terminated = True
                 success = False
                 # Penalty for the failed alignment
-                reward_components['final_result'] = - _r0_to_rb * _r0
+                if _rconf['final_result']['enabled']:
+                    reward_components['final_result'] = - _rconf['final_result']['no_improv_cutoff_penalty'] * _r0
         elif self._final_countdown is not None:
             if self._cur_dominance >= self._final_dominance_target:
                 terminated = True
                 success = True
                 # final positive bonus
-                reward_components['final_result'] = _r0_to_rb * _r0
+                if _rconf['final_result']['enabled']:
+                    reward_components['final_result'] = _rconf['final_result']['success_reward'] * _r0
             elif self._final_countdown == 0:
                 # Did not reach the target dominance
                 terminated = True
                 success = False
-                reward_components['final_result'] = - _r0_to_rb * _r0
+                if _rconf['final_result']['enabled']:
+                    reward_components['final_result'] = - _rconf['final_result']['final_countdown_cutoff_penalty'] * _r0
             else:
                 self._final_countdown -= 1
         
         # checking if the alignment is hopelessly lost
-        elif self._no_peak_steps >= self._MAX_NO_PEAKS:
+        elif self._no_peak_steps >= self._env_settings['general']['max_no_peaks_steps']:
             terminated = True
             success = False
             # this should be strongly discouraged
-            reward_components['final_result'] = - _r0_to_rb * _r0
+            if _rconf['final_result']['enabled']:
+                reward_components['final_result'] = - _rconf['final_result']['peaks_lost_cutoff_penalty'] * _r0
 
         # truncating if the number of steps exceeds the maximum
-        if self._steps_taken>=self._MAX_STEPS:
+        if self._steps_taken>=self._env_settings['general']['max_steps']:
             truncated = True
             success = False
-            # terminated = True
-            # Not necessarily have to add a penaly here if the gradual penalty growing with the step number is introduced
-            # reward -= 5*_r0
-            reward_components['final_result'] = - _r0_to_rb/5 * _r0
+            if _rconf['final_result']['enabled']:
+                reward_components['final_result'] = - _rconf['final_result']['steplimit_truncation_penalty'] * _r0
+        
+        if 'final_result' in reward_components:
+            reward_components['final_result'] *= _rconf['final_result']['scaling']
 
         reward = sum(reward_components.values())
+        # the 'total' in reward_components is never log-squeezed
         reward_components['total'] = reward
+
+        # Log-squeezing the actual reward
+        if _rconf['general']['reward_log_compression']:
+            reward = np.sign(reward)*(1+np.log(np.abs(reward)))
         
         # Obtaining an observation
         observation, info = self._get_obs_and_info()
@@ -541,8 +675,6 @@ class CavityAlignmentEnv(gym.Env):
             # TODO: rename self._already_changed_direction to reflect this option better.
             self._already_changed_direction = True
         self._steps_taken += 1
-
-        # reward = np.sign(reward)*(1+np.log(np.abs(reward))) # Log-squeeze the reward
 
         return observation, reward, terminated, truncated, info
 

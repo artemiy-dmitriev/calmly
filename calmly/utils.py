@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import pickle
 import cloudpickle
+import yaml
 from pathlib import Path
 from types import FunctionType
 from typing import Callable, Tuple
