@@ -21,13 +21,10 @@ Calmly supports:
 - CLI and HPC-friendly operation
 - Easy extensibility with user-defined cavity simulations and preprocessing
 
----
-
 IMPORTANT: Current status and Disclaimer
 ========================================
-The current version of calmly is an **early alpha**. It has been tested in simulation, and is currently in process of being deployed for real optical cavities by the `gravitational-wave instrumentation group <https://www.sr.bham.ac.uk/instrumental/>`_ at the University of Birmingham, UK. Please contact the author via `email <mailto:artemiydmitriev@gmail.com>`_ or on `Github <https://github.com/artemiy-dmitriev>`_ if you are interested in testing or contributing to the project. Use at your own risk.
 
----
+The current version of calmly is an **early alpha**. It has been tested in simulation, and is currently in process of being deployed for real optical cavities by the `gravitational-wave instrumentation group <https://www.sr.bham.ac.uk/instrumental/>`_ at the University of Birmingham, UK. Please contact the author via `email <mailto:artemiydmitriev@gmail.com>`_ or on `Github <https://github.com/artemiy-dmitriev>`_ if you are interested in testing or contributing to the project. Use at your own risk.
 
 Getting Started
 ===============
@@ -41,8 +38,6 @@ Getting Started
    configuration
    api_reference
 
----
-
 Main Features
 =============
 
@@ -53,14 +48,10 @@ Main Features
 - **Easy evaluation**: benchmark different agents across consistent environments.
 - **Clean-up utilities**: safely remove generated models, logs, and datasets when needed.
 
----
-
 Citing Calmly
 =============
 
 If you use **Calmly** for research or publication, please consider citing it!
-
----
 
 Indices and Tables
 ==================

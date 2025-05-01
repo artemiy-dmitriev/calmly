@@ -14,7 +14,8 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    "**/.ipynb_checkpoints/*",
+    "**/.ipynb_checkpoints",
+    "**/.ipynb_checkpoints/**"
 ]
 
 project = 'calmly'
