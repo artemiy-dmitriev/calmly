@@ -1,0 +1,68 @@
+general:
+  allowed_best_result_annealing: 0.95
+  final_countdown_steps: 10
+  max_no_improv_steps: 20
+  max_no_peaks_steps: 20
+  max_steps: 1000
+motor_counts_per_step:
+  SM1:
+    pitch:
+      neg: 3
+      pos: 3
+    yaw:
+      neg: 3
+      pos: 3
+  SM2:
+    pitch:
+      neg: 3
+      pos: 3
+    yaw:
+      neg: 3
+      pos: 3
+reward_components:
+  final_result:
+    enabled: true
+    final_countdown_cutoff_penalty: 1.0
+    no_improv_cutoff_penalty: 1.0
+    peaks_lost_cutoff_penalty: 1.0
+    scaling: 308.0
+    steplimit_truncation_penalty: 0.2
+    success_reward: 1.0
+  general:
+    overall_reward_scaling: 1.0
+    reward_log_compression: false
+  main_peak_dominance:
+    coef: 5.0
+    enabled: true
+  main_peak_improvement:
+    allow_negative: false
+    coef: 850.0
+    enabled: true
+  motor_switching:
+    bad_motor_repeat_coef: 1.0
+    bad_motor_switch_coef: 1.0
+    bad_switched_motor_although_could_switch_direction: 0.2
+    enabled: true
+    good_direction_switch_coef: 1.0
+    good_motor_repeat_coef: 1.0
+    good_motor_switch_coef: 1.0
+    scaling: 1.0
+  motor_usage_dist:
+    coef: 10.0
+    enabled: true
+  no_peaks:
+    enabled: true
+    penalty: 1.0
+  other_peaks_dominance:
+    coef: 2.5
+    enabled: true
+  other_peaks_improvement:
+    allow_negative: false
+    coef: 425.0
+    enabled: false
+  single_peak:
+    enabled: true
+    reward: 1.0
+  time:
+    enabled: true
+    target_steps: 280

@@ -2,7 +2,6 @@
 import importlib.util
 import pickle
 import os
-import yaml
 import argparse
 import torch
 import numpy as np
@@ -12,14 +11,12 @@ from imitation.data.types import Transitions, DictObs
 
 from calmly.env import get_env_factory
 from calmly.utils import load_factories
+from calmly.io import load_config
 from stable_baselines3.ppo import MultiInputPolicy as PPOMultiInputPolicy
 
 import warnings
 warnings.filterwarnings("ignore", message="trying to unwrap object of type")
 
-def load_config(config_path: str) -> dict:
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
 
 def load_dataset(dataset_path: str) -> Transitions:
     with open(dataset_path, "rb") as f:

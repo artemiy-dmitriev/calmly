@@ -1,8 +1,6 @@
-
 import os
 import sys
 import importlib.util
-import yaml
 import argparse
 import torch
 import numpy as np
@@ -11,6 +9,7 @@ from stable_baselines3.common.vec_env import SubprocVecEnv
 
 from calmly.env import get_env_factory
 from calmly.utils import load_factories
+from calmly.io import load_config
 
 from stable_baselines3.common.callbacks import BaseCallback
 
@@ -37,10 +36,6 @@ class AvgRewardLoggerCallback(BaseCallback):
             avg_reward = np.mean(self.avg_rewards_per_step)
             self.logger.record("rollout/avg_reward_per_step", avg_reward)
             self.avg_rewards_per_step.clear()
-
-def load_config(config_path: str) -> dict:
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
 
 def train_ppo_model(
     config_path: str = "calmly_config.yaml",

@@ -3,25 +3,11 @@ import gymnasium as gym
 import stable_baselines3
 from gymnasium import spaces
 from enum import Enum
+import copy
+import yaml
 
 from .simulator import CavityAlignment
 from .preprocessing import CavityScanPreProcess
-
-def load_env_settings (
-    env_settings: dict | str
-) -> dict:
-    """
-    Returns a dictionary of gym environment settings that can be used to configure an instance of `calmly.env.CavityAlignmentEnv`.
-    If `env_settings` is a dict, it is returned unchanged; if it is a string, it is assumed that the string contains a path 
-    to a yaml file with settings, which is imported and returned.
-    """
-    if isinstance(env_settings, dict):
-        return env_settings
-    elif isinstance(env_settings, str):
-        with open(env_settings, 'r') as f:
-            return yaml.safe_load(f)
-    else:
-        raise TypeError("env_settings must be dict of settings or str containing path to the settings file.")
 
 _reward_component_names = [
     'total',
@@ -137,6 +123,25 @@ _default_env_settings = {
     }
 }
 
+def load_env_settings(
+    env_settings: dict | str = None
+) -> dict:
+    """
+    Returns a dictionary of environment settings that can be used to configure an instance of `calmly.env.CavityAlignmentEnv`.
+    If `env_settings` is a dict, it is returned unchanged; if it is a string, it is assumed that the string contains a path 
+    to a yaml file with settings, which is imported and returned. 
+    If `env_settings` is not specified, a deepcopy of the default dictionary is returned.
+    """
+    if env_settings is None:
+        return copy.deepcopy(_default_env_settings)
+    elif isinstance(env_settings, dict):
+        return copy.deepcopy(env_settings)
+    elif isinstance(env_settings, str):
+        with open(env_settings, 'r') as f:
+            return yaml.safe_load(f)
+    else:
+        raise TypeError("env_settings must be dict of settings or str containing path to the settings file.")
+
 class Actions_1(Enum):
     DECREASE_SM1_YAW = 0
     INCREASE_SM1_YAW = 1
@@ -167,9 +172,9 @@ class CavityAlignmentEnv(gym.Env):
         self.Npeaks = Npeaks
 
         # Loading settings (first loading the defaults and then updating with env_settings if given)
-        self._env_settings = _default_env_settings
+        self._env_settings = load_env_settings()
         if env_settings is not None:
-            self._env_settings.update(load_env_settings(env_settings))
+            self.update_env_settings(load_env_settings(env_settings))
 
         # Discrete action space: fixed forward or backward step for each motor (8 in total)
         self.action_space = spaces.Discrete(8)
@@ -227,6 +232,36 @@ class CavityAlignmentEnv(gym.Env):
 
         # This is mostly used for debugging, can be removed later
         self.reward_component_keys = _reward_component_names
+
+    def update_env_settings(
+        self,
+        env_settings : dict = {},
+        **kwargs
+    ) -> None:
+        """
+        Update the environment settings, including the reward shaping parameters.
+
+        Parameters
+        ----------
+        env_settings: dict
+            A python dictionary with settings to be added/updated.
+        **kwargs
+            Any additional settings to be added/updated. If `env_settings` is also passed, parameters specified as `**kwargs`
+            will take precedence over those specified in `env_settings`.
+        """
+        res = {}
+        res.update(env_settings)
+        res.update(kwargs)
+
+        self._env_settings.update(res)
+
+    def get_env_settings(
+        self
+    ) -> dict:
+        """
+        Returns a deepcopy of the dictionary containing various environment settings.
+        """
+        return copy.deepcopy(self._env_settings)
         
     def _take_cavity_scan(self, write_values_to_model=True):
         """
@@ -350,11 +385,12 @@ class CavityAlignmentEnv(gym.Env):
     def update_exploration_settings(self, settings : dict) -> None:
         """
         Updates the internal exloration settings that control the action noise in PPO training.
+        Action noise is not used and these settings are ignored unless `self._training==True and self._algorithm=='PPO'`
 
         Parameters
         ----------
         settings : dict
-            Dictionary of settings to be updated in the environment. May contain the following keys:
+            Dictionary of exploration settings to be updated in the environment. May contain the following keys:
 
             - 'enabled' (bool): Whether or not to use the action noise.
             - 'decay_steps' (int): Number of steps to use action noise for
@@ -724,6 +760,7 @@ def get_env_factory(
     mis_angle_min=None,
     mis_angle_max=None,
     exploration_settings=None,
+    env_settings=None,
     seed=None,
     use_avg_reward_wrapper: bool = False
 ):
@@ -748,7 +785,8 @@ def get_env_factory(
             training=training,
             Npeaks=Npeaks,
             algo=algo,
-            Nmisalign=Nmisalign
+            Nmisalign=Nmisalign,
+            env_settings=env_settings
         )
 
         env.cav_sim.set_all_misalignment_limits(mis_angle_min, mis_angle_max)

@@ -3,17 +3,12 @@ import pickle
 import os
 from tqdm import trange
 import numpy as np
-import yaml
 import argparse
 
 from calmly.utils import load_factories
 from calmly.policies import iterative_policy
 from calmly.env import get_env_factory
-
-
-def load_config(config_path: str) -> dict:
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+from calmly.io import load_config
 
 def load_heuristic_policy(policy_path):
     if policy_path == "default":

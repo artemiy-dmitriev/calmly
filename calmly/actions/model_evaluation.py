@@ -9,14 +9,11 @@ from tqdm import trange
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from calmly.env import get_env_factory
+from calmly.env import get_env_factory, load_env_settings
 from calmly.utils import load_factories
 from calmly.policies import iterative_policy
+from calmly.io import load_config
 from stable_baselines3.ppo import MultiInputPolicy as PPOMultiInputPolicy
-
-def load_config(config_path: str) -> dict:
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
 
 def load_agent(agent_path, device, env):
     """Loads agent depending on file extension."""
@@ -71,6 +68,12 @@ def evaluate_model(
     else:
         device = torch.device("cpu")
 
+    env_settings_location = config.get('factories', {}).get('env_settings', False)
+    if env_settings_location:
+        env_settings = load_env_settings(env_settings_location)
+    else:
+        env_settings = None
+
     cav_sim_factory, scan_proc_factory = load_factories(factory_module)
 
     env_factory = get_env_factory(
@@ -84,7 +87,8 @@ def evaluate_model(
         maxtem=maxtem,
         mis_angle_min=mis_angle_min,
         mis_angle_max=mis_angle_max,
-        seed=seed
+        seed=seed,
+        env_settings=env_settings
     )
 
     env = env_factory()

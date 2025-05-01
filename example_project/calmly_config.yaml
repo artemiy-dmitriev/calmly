@@ -1,6 +1,7 @@
 # User factory definition module (must define cav_sim_factory and scan_processor_factory)
 factories:
   module: "my_factories.py"  # User-defined Python file containing the factory functions
+  env_settings: "env_settings.yaml"
 
 # Heuristic dataset generation
 dataset:

@@ -1,5 +1,6 @@
 import importlib.util
 import sys
+import os
 import pickle
 import cloudpickle
 import yaml
@@ -11,7 +12,44 @@ import stable_baselines3
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .env import CavityAlignmentEnv
+from .env import CavityAlignmentEnv, load_env_settings
+
+
+def write_env_settings(
+    fname : str = "env_settings.yaml",
+    *,
+    env : CavityAlignmentEnv = None,
+    settings : dict = None
+):
+    """
+    Write environment settings for `calmly.CavityAlignmentEnv` to a YAML file. If neither `env` nor `settings` are specified,
+    a file with the default settings will be created (which can be used as a template in user projects).
+
+    Parameters
+    ----------
+    fname : str
+        String containing filename and path to which the settings will be written. Default is "env_settings.yaml" in the current directory.
+    env : CavityAlignmentEnv
+        Environment whose settings to write to the file. Cannot be specified together with `settings`. Default is None.
+    settings : dict
+        Dictionary containing the settings to write. Cannot be specified together with `env`. Default is None.
+    """
+    if (env is not None) and (settings is not None):
+        raise TypeError("Both `env` and `settings` parameters are specified. You should pass only one of them or none.")
+    elif (env is None) and (settings is None):
+        data = load_env_settings()
+    elif env is not None:
+        data = env.get_env_settings()
+    else:
+        # env is None, settings is not None
+        data = settings
+
+    dir_path = os.path.dirname(fname)
+    if dir_path:
+        os.makedirs(dir_path, exist_ok=True)
+
+    with open(fname, "w") as f:
+        yaml.dump(data, f)
 
 def load_factories(factory_path: str) -> Tuple[Callable, Callable]:
     """
