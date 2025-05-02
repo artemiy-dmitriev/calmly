@@ -55,6 +55,8 @@ def evaluate_model(
     num_episodes = config["evaluation"]["n_episodes"]
     factory_module = config["factories"]["module"]
     quiet = config["evaluation"].get("quiet", False)
+    if not message:
+        message = config["evaluation"].get("message", "")
 
     Npeaks = config["evaluation"]["n_peaks"]
     maxtem = config["evaluation"]["maxtem"]

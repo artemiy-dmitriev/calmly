@@ -66,4 +66,5 @@ evaluation:
   mis_angle_max: 4.0e-4
   seed: 342
   save_path: "evaluation/evaluation_results.yaml"
+  message: "My evaluation"
 

@@ -152,6 +152,7 @@ Sections
   - ``seed``: Random seed for reproducibility.
   - ``n_peaks``, ``maxtem``, ``mis_angle_min``, ``mis_angle_max``: See above.
   - ``save_path``: YAML file to save evaluation results. Recommended location is in ``evaluation/`` subdirectory.
+  - ``message``: Optional message that will be added to the evaulation results.
 
 Notes
 ~~~~~
