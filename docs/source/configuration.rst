@@ -62,8 +62,11 @@ Here is a minimal example `calmly_config.yaml`:
       ent_coef: 0.02
       exploration_settings:
         enabled: true
-      tensorboard_log: "logs/ppo"
+      tensorboard_log_dir: "logs/ppo"
+      tensorboard_log_name: "PPO_MultiEnv"
       save_path: "models/ppo_policy"
+      load_path: "models/ppo_policy"
+      save_freq: 50000
       n_peaks: 5
       maxtem: 5
       mis_angle_min: -4.0e-4 
@@ -131,8 +134,11 @@ Sections
     - ``initial_probability``: Initial chance of choosing a random action instead of the predicted one. Default is `0.25`.
     - ``final_probability``: Final chance (after decay_steps) of choosing a random action. Default is `0.01`.
 
-  - ``tensorboard_log``: Directory for Tensorboard logs. Recommended location is in ``logs/`` subdirectory.
+  - ``tensorboard_log_dir``: Directory for Tensorboard logs. Recommended location is in ``logs/`` subdirectory, e.g. ``logs/ppo``.
+  - ``tensorboard_log_name``: Name of the TB log.
   - ``save_path``: File path to save the PPO model (.zip file). Recommended location is in ``models/`` subdirectory.
+  - ``load_path``: File path to load the PPO model from (without .zip extension). If not specified, will default to ``save_path``. This setting is only used if `continue_training` is set to `True`.
+  - ``save_freq``: How often the checkpoints will be saved during training (in the units of steps). Default is 50000.
   - ``n_peaks``: Number of resonant peaks within one cavity free spectral range to include in the observation space of the environment.
   - ``maxtem``: Maximum total order of TEM modes to include in the cavity simulation. For example, '3' will include 10 modes: 00, 10, 01, 20, 11, 02, 30, 21, 12, and 03. See `Finesse documentation <https://finesse.ifosim.org/docs/latest/physics/higher_order_modes/shifted_beam_convergence.html>`_ for details.
   - ``mis_angle_min``, ``mis_angle_max``: Minimal and maximal initial angular misalignment for each of the "misalignable" cavity mirrors.

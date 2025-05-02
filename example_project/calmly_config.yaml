@@ -11,7 +11,7 @@ dataset:
   path: "data/heuristic_dataset.pkl"
   n_peaks: 5
   maxtem: 5
-  mis_angle_min: -2.0e-4 
+  mis_angle_min: -2.0e-4
   mis_angle_max: 2.0e-4
   policy: "default" # or a pickle path
   seed: 42
@@ -43,23 +43,26 @@ ppo:
   ent_coef: 0.02
   exploration_settings:
     enabled: true
-  tensorboard_log: "logs/ppo"
+  tensorboard_log_dir: "logs/ppo"
+  tensorboard_log_name: "PPO_MultiEnv"
   save_path: "models/ppo_policy"
+  load_path: "models/ppo_policy"
+  save_freq: 50000
   n_peaks: 5
   maxtem: 5
-  mis_angle_min: -4.0e-4 
+  mis_angle_min: -4.0e-4
   mis_angle_max: 4.0e-4
   seed: 242
-  
+
 # Evaluation
 evaluation:
   enabled: true
   quiet: false
   n_episodes: 20
-  agent_path: "models/bc_policy.pt"
+  agent_path: "iterative_policy"
   n_peaks: 5
   maxtem: 5
-  mis_angle_min: -4.0e-4 
+  mis_angle_min: -4.0e-4
   mis_angle_max: 4.0e-4
   seed: 342
   save_path: "evaluation/evaluation_results.yaml"

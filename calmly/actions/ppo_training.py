@@ -4,6 +4,7 @@ import importlib.util
 import argparse
 import torch
 import numpy as np
+import signal
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
@@ -11,7 +12,7 @@ from calmly.env import get_env_factory
 from calmly.utils import load_factories
 from calmly.io import load_config
 
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import CallbackList, BaseCallback
 
 class AvgRewardLoggerCallback(BaseCallback):
     """
@@ -36,6 +37,27 @@ class AvgRewardLoggerCallback(BaseCallback):
             avg_reward = np.mean(self.avg_rewards_per_step)
             self.logger.record("rollout/avg_reward_per_step", avg_reward)
             self.avg_rewards_per_step.clear()
+
+from stable_baselines3.common.callbacks import BaseCallback
+
+class SaveOnStepCallback(BaseCallback):
+    """
+    Save the model periodically during training (every `save_freq` steps).
+    """
+
+    def __init__(self, save_path: str, save_freq: int = 10_000, verbose: int = 1):
+        super().__init__(verbose)
+        self.save_path = save_path
+        self.save_freq = save_freq
+
+    def _on_step(self) -> bool:
+        if self.n_calls % self.save_freq == 0:
+            step_path = f"{self.save_path}_step{self.num_timesteps}.zip"
+            self.model.save(step_path)
+            if self.verbose > 0:
+                print(f"Saved checkpoint: {step_path}")
+        return True
+
 
 def train_ppo_model(
     config_path: str = "calmly_config.yaml",
@@ -70,10 +92,13 @@ def train_ppo_model(
     torch_num_threads = config['ppo'].get("torch_num_threads", 1)
     learning_rate = float(config['ppo'].get("learning_rate", 3e-4))
     total_timesteps = config['ppo'].get("total_timesteps", 400_000)
-    tensorboard_log = config['ppo'].get("tensorboard_log", "logs/ppo")
+    tensorboard_log_dir = config['ppo'].get("tensorboard_log_dir", "logs/ppo")
+    tensorboard_log_name = config['ppo'].get("tensorboard_log_name", "PPO_MultiEnv")
     ent_coef = config['ppo'].get("ent_coef", 0.02)
     policy_path = config['bc'].get("policy_save_path", "models/bc_policy.pt")
     save_path = config['ppo'].get("save_path", "models/ppo_policy")
+    load_path = config['ppo'].get("load_path", save_path)
+    save_freq = int(config['ppo'].get("save_freq", 50_000)/n_envs)
     Npeaks = config["ppo"]["n_peaks"]
     maxtem = config["ppo"]["maxtem"]
     mis_angle_min = config["ppo"]["mis_angle_min"]
@@ -143,19 +168,19 @@ def train_ppo_model(
     if continue_training:
         if skip_bc and (not quiet):
             print("Warning: skip_bc flag is ignored if continue_training is set to True.")
-        if os.path.exists(save_path + ".zip"):
-            model = PPO.load(save_path, env=envs, device=device)
+        if os.path.exists(load_path + ".zip"):
+            model = PPO.load(load_path, env=envs, device=device)
             if not quiet:
-                print(f"Continuing training from saved PPO model at {save_path}.zip")
+                print(f"Continuing training from saved PPO model at {load_path}.zip")
         else:
-            print(f"Cannot continue training because the PPO model was not found at {save_path}.zip")
+            print(f"Cannot continue training because the PPO model was not found at {load_path}.zip")
             return
     else:
         model = PPO(
             "MultiInputPolicy",
             envs,
             verbose=0 if quiet else 1,
-            tensorboard_log=tensorboard_log,
+            tensorboard_log=tensorboard_log_dir,
             ent_coef=ent_coef,
             learning_rate=learning_rate,
             device=device,
@@ -165,13 +190,30 @@ def train_ppo_model(
             if not quiet:
                 print(f"Initialized PPO model with BC policy from {policy_path}")
 
+    def cleanup(signum, frame):
+        if not quiet:
+            print("\n[INFO] Caught interrupt. Saving model and closing environments.")
+        model.save(save_path)
+        envs.close()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, cleanup)
+    signal.signal(signal.SIGTERM, cleanup)
+
+    callback = CallbackList([
+        AvgRewardLoggerCallback(),
+        SaveOnStepCallback(
+            save_path=save_path,
+            save_freq=save_freq
+        )
+    ])
+
     model.learn(
         total_timesteps=total_timesteps,
         progress_bar=not quiet,
-        tb_log_name="PPO_MultiEnv",
-        callback=AvgRewardLoggerCallback()
+        tb_log_name=tensorboard_log_name,
+        callback=callback
     )
-
     model.save(save_path)
     if not quiet:
         print(f"PPO model saved to {save_path}")
