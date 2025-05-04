@@ -490,19 +490,7 @@ class CavityAlignmentEnv(gym.Env):
         # Take a cavity scan
         self._take_cavity_scan(write_values_to_model=True)
 
-        ######## TEMPORARY SECTION ########
-        ######## REWARD SCALING ###########
-        
-        _ddom_to_r = 846 # 846 # proportionality coefficient r = ddom_to_r* ddom
-        _drdom_to_r = _ddom_to_r / 2 # for the rest of the peaks
-        _dom_to_r = 5# proportionality coefficient r = dom_to_r* dom
-        _rdom_to_r = _dom_to_r / 2 # for the rest of the peaks
-        _Nmax_steps = 93*3
-        _r0_to_rb = 308
-        _no_peaks_penalty = 1 # Additional penalty for zero peaks (will be scaled by _r0)
-        _single_peak_reward = 1 # Additional reward for a single peak (will be scaled by _r0)
-        ###### END OF TEMP SECTION ########
-
+        ##### START OF REWARD LOGIC BLOCK #####
         _rconf = self._env_settings['reward_components']
         _r0 = _rconf['general']['overall_reward_scaling'] # average reward per step (should not matter)
         reward_components = {}
@@ -688,6 +676,8 @@ class CavityAlignmentEnv(gym.Env):
         # Log-squeezing the actual reward
         if _rconf['general']['reward_log_compression']:
             reward = np.sign(reward)*(1+np.log(np.abs(reward)))
+
+        #####   END OF REWARD LOGIC BLOCK #####
         
         # Obtaining an observation
         observation, info = self._get_obs_and_info()

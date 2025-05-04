@@ -8,7 +8,7 @@ import signal
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import SubprocVecEnv
 
-from calmly.env import get_env_factory
+from calmly.env import get_env_factory, load_env_settings
 from calmly.utils import load_factories
 from calmly.io import load_config
 
@@ -68,7 +68,12 @@ def train_ppo_model(
     skip_bc: bool = False
 ):
     if config is None:
+        if not quiet:
+            print(f"Loading calmly config from {config_path}")
         config = load_config(config_path)
+    else:
+        if not quiet:
+            print(f"Using calmly config dict directly passed to train_ppo_model as a parameter")
 
     if (not config.get("ppo", {}).get("enabled", False)) and (not force):
         print("PPO training is disabled in config. Enable it or use --force.")
@@ -83,8 +88,21 @@ def train_ppo_model(
     if skip_bc == False:
         skip_bc = config['ppo'].get('skip_bc', False)
 
-    # Add user factory module directory to sys.path (required for SubprocVecEnv)
     factory_module = config["factories"]["module"]
+    if not quiet:
+        print(f"Loading factories from {factory_module}")    
+    cav_sim_factory, scan_proc_factory = load_factories(factory_module)
+
+    env_settings_location = config.get('factories', {}).get('env_settings', False)
+    if env_settings_location:
+        if not quiet:
+            if isinstance(env_settings_location, dict):
+                print(f"Loading environment settings directly from the calmly config")
+            else:
+                print(f"Loading environment settings from {env_settings_location}")
+        env_settings = load_env_settings(env_settings_location)
+    else:
+        env_settings = None
 
     seed = config['ppo'].get("seed", 42)
     device_name = config['ppo'].get("device", None)
@@ -137,9 +155,6 @@ def train_ppo_model(
     else:
         device = torch.device("cpu")
 
-
-    cav_sim_factory, scan_proc_factory = load_factories(factory_module)
-
     env_factory = get_env_factory(
         cav_sim_factory,
         scan_proc_factory,
@@ -152,7 +167,8 @@ def train_ppo_model(
         mis_angle_min=mis_angle_min,
         mis_angle_max=mis_angle_max,
         exploration_settings=exploration_settings,
-        use_avg_reward_wrapper=True
+        use_avg_reward_wrapper=True,
+        env_settings=env_settings
     )
 
     # need to add rank to avoid initialising subprocesses with the same seed

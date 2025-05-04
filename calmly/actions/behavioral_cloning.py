@@ -9,7 +9,7 @@ import numpy as np
 from imitation.algorithms.bc import BC
 from imitation.data.types import Transitions, DictObs
 
-from calmly.env import get_env_factory
+from calmly.env import get_env_factory, load_env_settings
 from calmly.utils import load_factories
 from calmly.io import load_config
 from stable_baselines3.ppo import MultiInputPolicy as PPOMultiInputPolicy
@@ -51,7 +51,12 @@ def train_bc_model(
     force: bool = False
 ):
     if config is None:
+        if not quiet:
+            print(f"Loading calmly config from {config_path}")
         config = load_config(config_path)
+    else:
+        if not quiet:
+            print(f"Using calmly config dict directly passed to train_ppo_model as a parameter")
 
     if (not config.get("bc", {}).get("enabled", False)) and (not force):
         print("Behavioral cloning is disabled in config. Enable it or use --force.")
@@ -59,6 +64,22 @@ def train_bc_model(
 
     if quiet==False:
         quiet = config['bc'].get('quiet', False)
+
+    factory_module = config["factories"]["module"]
+    if not quiet:
+        print(f"Loading factories from {factory_module}")    
+    cav_sim_factory, scan_proc_factory = load_factories(factory_module)
+
+    env_settings_location = config.get('factories', {}).get('env_settings', False)
+    if env_settings_location:
+        if not quiet:
+            if isinstance(env_settings_location, dict):
+                print(f"Loading environment settings directly from the calmly config")
+            else:
+                print(f"Loading environment settings from {env_settings_location}")
+        env_settings = load_env_settings(env_settings_location)
+    else:
+        env_settings = None
         
     dataset_path = config['dataset']['path']
     torch_num_threads = config['bc'].get("torch_num_threads", 10)
@@ -74,7 +95,9 @@ def train_bc_model(
     maxtem = config["dataset"]["maxtem"]
     mis_angle_min=config["dataset"]["mis_angle_min"]
     mis_angle_max=config["dataset"]["mis_angle_max"]
-    
+
+    if not quiet:
+        print(f"Loading dataset from {dataset_path}")
     transitions = load_dataset(dataset_path)
     rng = np.random.default_rng(seed)
 
@@ -88,8 +111,6 @@ def train_bc_model(
         device = torch.device("cpu")
         
     torch.set_num_threads(torch_num_threads)
-
-    cav_sim_factory, scan_proc_factory = load_factories(factory_module)
         
     env_factory = get_env_factory(
         cav_sim_factory,
@@ -101,7 +122,8 @@ def train_bc_model(
         Npeaks = Npeaks,
         maxtem = maxtem,
         mis_angle_min=mis_angle_min,
-        mis_angle_max=mis_angle_max
+        mis_angle_max=mis_angle_max,
+        env_settings=env_settings
     )
     
     # need to add rank to avoid initialising subprocesses with the same seed
