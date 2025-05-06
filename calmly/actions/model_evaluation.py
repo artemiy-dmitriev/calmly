@@ -53,7 +53,7 @@ def evaluate_model(
 
     agent_path = config["evaluation"]["agent_path"]
     num_episodes = config["evaluation"]["n_episodes"]
-    factory_module = config["factories"]["module"]
+    factory_module = config["general"]["factory_module"]
     quiet = config["evaluation"].get("quiet", False)
     if not message:
         message = config["evaluation"].get("message", "")
@@ -70,7 +70,7 @@ def evaluate_model(
     else:
         device = torch.device("cpu")
 
-    env_settings_location = config.get('factories', {}).get('env_settings', False)
+    env_settings_location = config.get('general', {}).get('env_settings', False)
     if env_settings_location:
         env_settings = load_env_settings(env_settings_location)
     else:

@@ -109,12 +109,12 @@ def train_ppo_model(
     if skip_bc == False:
         skip_bc = config['ppo'].get('skip_bc', False)
 
-    factory_module = config["factories"]["module"]
+    factory_module = config["general"]["factory_module"]
     if not quiet:
         print(f"Loading factories from {factory_module}")    
     cav_sim_factory, scan_proc_factory = load_factories(factory_module)
 
-    env_settings_location = config.get('factories', {}).get('env_settings', False)
+    env_settings_location = config.get('general', {}).get('env_settings', False)
     if env_settings_location:
         if not quiet:
             if isinstance(env_settings_location, dict):

@@ -18,9 +18,11 @@ Here is a minimal example `calmly_config.yaml`:
 .. code-block:: yaml
 
     # User factory definition module and environment settings
-    factories:
-      module: "my_factories.py"  # User-defined Python or pickle file containing the factory functions
+    general:
+      factory_module: "my_factories.py"  # User-defined Python or pickle file containing the factory functions
       env_settings: "env_settings.yaml" # Environment settings (can also be a nested dictionary)
+      norm_observations: true # Use VecNormalize to normalize the observations
+      norm_rewards: true # Use VecNormalize to normalize the rewards
     
     # Heuristic dataset generation
     dataset:
@@ -89,9 +91,14 @@ Here is a minimal example `calmly_config.yaml`:
 Sections
 ~~~~~~~~
 
-**factories**
-  - ``module``: Python file (.py) or a pickle file (.pkl) containing user-defined `cav_sim_factory()` and `scan_processor_factory()`.
+**general**
+  - ``factory_module``: Python file (.py) or a pickle file (.pkl) containing user-defined `cav_sim_factory()` and `scan_processor_factory()`.
   - ``env_settings``: YAML file containg settings for the environment, e.g. the reward logic. Can also be a nested dictionary with settings instead of a file path. See below for the description of this file.
+  - ``norm_observations``: If True (default), calmly will use `VecNormalize() <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ to normalise the observation space.
+  - ``norm_rewards``: If True (default), calmly will use `VecNormalize() <https://stable-baselines3.readthedocs.io/en/master/guide/vec_envs.html#stable_baselines3.common.vec_env.VecNormalize>`_ to normalise the rewards.
+
+.. warning::
+    The values of ``norm_observations`` and ``norm_rewards`` must be preserved over the whole workflow (including dataset generation, BC cloning, PPO learning, and evaluation, as well as in the final deployment) to maintain compatibility of obtained policies.
 
 **dataset**
   - ``enabled``: Whether to generate a dataset.
@@ -152,7 +159,7 @@ Sections
   - ``seed``: Random seed for reproducibility.
   - ``n_peaks``, ``maxtem``, ``mis_angle_min``, ``mis_angle_max``: See above.
   - ``save_path``: YAML file to save evaluation results. Recommended location is in ``evaluation/`` subdirectory.
-  - ``message``: Optional message that will be added to the evaulation results.
+  - ``message``: Optional message that will be added to the evaluation results.
 
 Notes
 ~~~~~

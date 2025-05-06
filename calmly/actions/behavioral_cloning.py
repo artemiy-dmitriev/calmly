@@ -65,12 +65,12 @@ def train_bc_model(
     if quiet==False:
         quiet = config['bc'].get('quiet', False)
 
-    factory_module = config["factories"]["module"]
+    factory_module = config["general"]["factory_module"]
     if not quiet:
         print(f"Loading factories from {factory_module}")    
     cav_sim_factory, scan_proc_factory = load_factories(factory_module)
 
-    env_settings_location = config.get('factories', {}).get('env_settings', False)
+    env_settings_location = config.get('general', {}).get('env_settings', False)
     if env_settings_location:
         if not quiet:
             if isinstance(env_settings_location, dict):
@@ -90,7 +90,6 @@ def train_bc_model(
     net_arch = config['bc'].get("net_arch", [64, 64])
     n_epochs = config['bc'].get("n_epochs", 10)
     output_path = config['bc'].get("policy_save_path", "models/bc_policy.pt")
-    factory_module = config["factories"]["module"]
     Npeaks = config["dataset"]["n_peaks"]
     maxtem = config["dataset"]["maxtem"]
     mis_angle_min=config["dataset"]["mis_angle_min"]

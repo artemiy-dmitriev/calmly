@@ -1,7 +1,9 @@
 # User factory definition module and environment settings
-factories:
-  module: "my_factories.py"  # User-defined Python or pickle file containing the factory functions
+general:
+  factory_module: "my_factories.py"  # User-defined Python or pickle file containing the factory functions
   env_settings: "env_settings.yaml" # Environment settings (can also be a nested dictionary)
+  norm_observations: true # Use VecNormalize to normalize the observations
+  norm_rewards: true # Use VecNormalize to normalize the rewards
 
 # Heuristic dataset generation
 dataset:
