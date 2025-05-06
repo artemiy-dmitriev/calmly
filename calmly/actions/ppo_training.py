@@ -6,7 +6,8 @@ import torch
 import numpy as np
 import signal
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize
+
 
 from calmly.env import get_env_factory, load_env_settings
 from calmly.utils import load_factories
@@ -65,10 +66,11 @@ class SaveOnStepCallback(BaseCallback):
     Save the model periodically during training (every `save_freq` steps).
     """
 
-    def __init__(self, save_path: str, save_freq: int = 10_000, verbose: int = 1):
+    def __init__(self, save_path: str, save_freq: int = 10_000, use_VecNormalize: bool = False, verbose: int = 1):
         super().__init__(verbose)
         self.save_path = save_path
         self.save_freq = save_freq
+        self.use_VecNormalize = use_VecNormalize
 
     def _on_step(self) -> bool:
         if self.n_calls % self.save_freq == 0:
@@ -76,6 +78,14 @@ class SaveOnStepCallback(BaseCallback):
             self.model.save(step_path)
             if self.verbose > 0:
                 print(f"Saved checkpoint: {step_path}")
+            if self.use_VecNormalize:
+                vn_output_path = os.path.splitext(step_path)[0]+"_vecnormalize.pkl"
+                if not quiet:
+                    print(f"Saving normalisation settings to {vn_output_path}...", end=' ')
+                self.training_env.save(vn_output_path)
+                if not quiet:
+                    print("Done")
+            
         return True
 
 
@@ -124,6 +134,16 @@ def train_ppo_model(
         env_settings = load_env_settings(env_settings_location)
     else:
         env_settings = None
+
+    norm_obs = config['general'].get('norm_observations', True)
+    if not quiet:
+        norm_obs_status = "On" if norm_obs else "Off"
+        print("Normalisation of observations:", norm_obs_status)
+    norm_rew = config['general'].get('norm_rewards', True)
+    if not quiet:
+        norm_rew_status = "On" if norm_rew else "Off"
+        print("Normalisation of rewards:", norm_rew_status)
+    use_VecNormalize = norm_obs or norm_rew
 
     if n_envs is None:
         n_envs = config['ppo']['n_envs']
@@ -210,9 +230,17 @@ def train_ppo_model(
     envs = SubprocVecEnv([make_env(i) for i in range(n_envs)])
 
     if continue_training:
+        reset_num_timesteps = False
         if skip_bc and (not quiet):
             print("Warning: skip_bc flag is ignored if continue_training is set to True.")
         if os.path.exists(load_path + ".zip"):
+            if use_VecNormalize:
+                vn_path = load_path+"_vecnormalize.pkl"
+                if not quiet:
+                    print(f"Loading normalisation settings from {vn_path}...", end=' ')
+                envs = VecNormalize.load(vn_path, envs)
+                if not quiet:
+                    print("Done")
             model = PPO.load(load_path, env=envs, device=device)
             if not quiet:
                 print(f"Continuing training from saved PPO model at {load_path}.zip")
@@ -220,6 +248,19 @@ def train_ppo_model(
             print(f"Cannot continue training because the PPO model was not found at {load_path}.zip")
             return
     else:
+        reset_num_timesteps = True
+
+        if (not skip_bc) and use_VecNormalize:
+            vn_path = os.path.splitext(policy_path)[0]+"_vecnormalize.pkl"
+            if not quiet:
+                print(f"Loading normalisation settings from {vn_path}...", end=' ')
+            envs = VecNormalize.load(vn_path, envs)
+            if not quiet:
+                print("Done")
+
+        if skip_bc and use_VecNormalize:
+            envs = VecNormalize(envs, norm_obs=norm_obs, norm_reward=norm_rew)
+        
         model = PPO(
             "MultiInputPolicy",
             envs,
@@ -238,6 +279,13 @@ def train_ppo_model(
         if not quiet:
             print("\n[INFO] Caught interrupt. Saving model and closing environments.")
         model.save(save_path)
+        if use_VecNormalize:
+            vn_output_path = os.path.splitext(save_path)[0]+"_vecnormalize.pkl"
+            if not quiet:
+                print(f"Saving normalisation settings to {vn_output_path}...", end=' ')
+            envs.save(vn_output_path)
+            if not quiet:
+                print("Done")
         envs.close()
         sys.exit(0)
 
@@ -257,11 +305,20 @@ def train_ppo_model(
         total_timesteps=total_timesteps,
         progress_bar=not quiet,
         tb_log_name=tensorboard_log_name,
-        callback=callback
+        callback=callback,
+        reset_num_timesteps=reset_num_timesteps
     )
     model.save(save_path)
     if not quiet:
         print(f"PPO model saved to {save_path}")
+    if use_VecNormalize:
+        vn_output_path = os.path.splitext(save_path)[0]+"_vecnormalize.pkl"
+        if not quiet:
+            print(f"Saving normalisation settings to {vn_output_path}...", end=' ')
+        envs.save(vn_output_path)
+        if not quiet:
+            print("Done")
+        
     envs.close()
 
 # Script entry point

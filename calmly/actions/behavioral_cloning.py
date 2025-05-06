@@ -89,7 +89,7 @@ def train_bc_model(
     norm_rew = config['general'].get('norm_rewards', True)
     if not quiet:
         norm_rew_status = "On" if norm_rew else "Off"
-        print("Normalisation of rewards:", norm_obs_status)
+        print("Normalisation of rewards:", norm_rew_status)
     use_VecNormalize = norm_obs or norm_rew
         
     dataset_path = config['dataset']['path']

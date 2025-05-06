@@ -21,7 +21,7 @@ Here is a minimal example `calmly_config.yaml`:
     general:
       factory_module: "my_factories.py"  # User-defined Python or pickle file containing the factory functions
       env_settings: "env_settings.yaml" # Environment settings (can also be a nested dictionary)
-      norm_observations: true # Use VecNormalize to normalize the observations
+      norm_observations: false # Use VecNormalize to normalize the observations
       norm_rewards: true # Use VecNormalize to normalize the rewards
     
     # Heuristic dataset generation
@@ -32,7 +32,7 @@ Here is a minimal example `calmly_config.yaml`:
       path: "data/heuristic_dataset.pkl"
       n_peaks: 5
       maxtem: 5
-      mis_angle_min: -2.0e-4 
+      mis_angle_min: -2.0e-4
       mis_angle_max: 2.0e-4
       policy: "default" # or a pickle path
       seed: 42
@@ -63,7 +63,7 @@ Here is a minimal example `calmly_config.yaml`:
       total_timesteps: 400000
       ent_coef: 0.02
       exploration_settings:
-        enabled: true
+        enabled: false
       tensorboard_log_dir: "logs/ppo"
       tensorboard_log_name: "PPO_MultiEnv"
       save_path: "models/ppo_policy"
@@ -71,22 +71,24 @@ Here is a minimal example `calmly_config.yaml`:
       save_freq: 50000
       n_peaks: 5
       maxtem: 5
-      mis_angle_min: -4.0e-4 
-      mis_angle_max: 4.0e-4
+      mis_angle_min: -2.0e-4
+      mis_angle_max: 2.0e-4
       seed: 242
-      
+    
     # Evaluation
     evaluation:
       enabled: true
       quiet: false
       n_episodes: 20
       agent_path: "models/bc_policy.pt"
+      raw_rewards: false
       n_peaks: 5
       maxtem: 5
-      mis_angle_min: -4.0e-4 
-      mis_angle_max: 4.0e-4
+      mis_angle_min: -2.0e-4
+      mis_angle_max: 2.0e-4
       seed: 342
       save_path: "evaluation/evaluation_results.yaml"
+      message: "My evaluation"
 
 Sections
 ~~~~~~~~
@@ -160,6 +162,7 @@ Sections
   - ``n_peaks``, ``maxtem``, ``mis_angle_min``, ``mis_angle_max``: See above.
   - ``save_path``: YAML file to save evaluation results. Recommended location is in ``evaluation/`` subdirectory.
   - ``message``: Optional message that will be added to the evaluation results.
+  - ``raw_rewards``: Will log raw instead of normalised rewards even if `norm_rewards` in the `general` block is `True`.
 
 Notes
 ~~~~~
