@@ -13,6 +13,7 @@ from calmly.env import get_env_factory, load_env_settings
 from calmly.utils import load_factories
 from calmly.io import load_config
 from stable_baselines3.ppo import MultiInputPolicy as PPOMultiInputPolicy
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 import warnings
 warnings.filterwarnings("ignore", message="trying to unwrap object of type")
@@ -80,6 +81,16 @@ def train_bc_model(
         env_settings = load_env_settings(env_settings_location)
     else:
         env_settings = None
+
+    norm_obs = config['general'].get('norm_observations', True)
+    if not quiet:
+        norm_obs_status = "On" if norm_obs else "Off"
+        print("Normalisation of observations:", norm_obs_status)
+    norm_rew = config['general'].get('norm_rewards', True)
+    if not quiet:
+        norm_rew_status = "On" if norm_rew else "Off"
+        print("Normalisation of rewards:", norm_obs_status)
+    use_VecNormalize = norm_obs or norm_rew
         
     dataset_path = config['dataset']['path']
     torch_num_threads = config['bc'].get("torch_num_threads", 10)
@@ -133,9 +144,16 @@ def train_bc_model(
             return env
         return _init
 
-    from stable_baselines3.common.vec_env import DummyVecEnv
     envs = DummyVecEnv([make_env(i) for i in range(n_envs)])
 
+    if use_VecNormalize:
+        vn_path = os.path.splitext(dataset_path)[0]+"_vecnormalize.pkl"
+        if not quiet:
+            print(f"Loading normalisation settings from {vn_path}...", end=' ')
+        envs = VecNormalize.load(vn_path, envs)
+        if not quiet:
+            print("Done")
+    
     custom_policy = PPOMultiInputPolicy(
         observation_space=envs.observation_space,
         action_space=envs.action_space,
@@ -155,10 +173,20 @@ def train_bc_model(
     progress_bar = False if quiet else True
     bc_trainer.train(n_epochs=n_epochs, progress_bar=progress_bar)
 
+    if not quiet:
+        print(f"Saving BC policy to {output_path}...", end = ' ')
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     torch.save(bc_trainer.policy.state_dict(), output_path)
     if not quiet:
-        print(f"BC policy saved to {output_path}")
+        print("Done")
+    if use_VecNormalize:
+        vn_output_path = os.path.splitext(output_path)[0]+"_vecnormalize.pkl"
+        if not quiet:
+            print(f"Saving normalisation settings to {vn_output_path}...", end=' ')
+        envs.save(vn_output_path)
+        if not quiet:
+            print("Done")
+    envs.close()
 
 # Script entry point
 def main():
