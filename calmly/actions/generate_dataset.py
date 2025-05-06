@@ -10,6 +10,8 @@ from calmly.policies import iterative_policy
 from calmly.env import get_env_factory
 from calmly.io import load_config
 
+from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+
 def load_heuristic_policy(policy_path):
     if policy_path == "default":
         return iterative_policy
@@ -34,7 +36,7 @@ def generate_dataset(
         config = load_config(config_path)
     else:
         if not quiet:
-            print(f"Using calmly config dict directly passed to train_ppo_model as a parameter")
+            print(f"Using calmly config dict directly passed as a parameter")
 
     if (not config.get("dataset", {}).get("enabled", False)) and (not force):
         print("Dataset generation is disabled in config. Enable it or use --force.")
@@ -58,6 +60,16 @@ def generate_dataset(
         env_settings = load_env_settings(env_settings_location)
     else:
         env_settings = None
+
+    norm_obs = config['general'].get('norm_observations', True)
+    if not quiet:
+        norm_obs_status = "On" if norm_obs else "Off"
+        print("Normalisation of observations:", norm_obs_status)
+    norm_rew = config['general'].get('norm_rewards', True)
+    if not quiet:
+        norm_rew_status = "On" if norm_rew else "Off"
+        print("Normalisation of rewards:", norm_obs_status)
+    use_VecNormalize = norm_obs or norm_rew
         
     dataset_path = config['dataset']['path']
     n_episodes = config['dataset']['n_episodes']
@@ -81,26 +93,39 @@ def generate_dataset(
 
     dataset = []
     episode_iterator = trange(n_episodes) if not quiet else range(n_episodes)
-    env = env_factory()
+    
+    env = DummyVecEnv([env_factory])
+    
+    if use_VecNormalize:
+        env = VecNormalize(env, norm_obs=norm_obs, norm_reward=norm_rew)
+        
     for _ in episode_iterator:
-        obs, info = env.reset()
+        obs = env.reset()
 
         while True:
-            action = policy_fn(obs)
-            dataset.append((obs, action))
-            obs, reward, terminated, truncated, info = env.step(action)
-            if terminated or truncated:
+            obs_unbatched = {k: v[0] for k, v in obs.items()}
+            action = policy_fn(obs_unbatched)
+            dataset.append((obs_unbatched, action))
+            obs, reward, done, info = env.step([action])
+            if done:
                 break
 
-    env.close()
-
     if not quiet:
-        print(f"Saving dataset with {len(dataset)} samples to {dataset_path}...")
-    os.makedirs(os.path.dirname(config["dataset"]["path"]), exist_ok=True)
+        print(f"Saving dataset with {len(dataset)} samples to {dataset_path}...", end=' ')
+    os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
     with open(dataset_path, 'wb') as f:
         pickle.dump(dataset, f)
     if not quiet:
-        print("Dataset saved.")
+        print("Done")
+
+    if use_VecNormalize:
+        vn_path = os.path.splitext(dataset_path)[0]+"_vecnormalize.pkl"
+        if not quiet:
+            print(f"Saving normalisation settings to {vn_path}...", end=' ')
+        env.save(vn_path)
+        if not quiet:
+            print("Done")
+    env.close()
 
 def main():
     parser = argparse.ArgumentParser()
