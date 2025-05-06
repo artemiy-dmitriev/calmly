@@ -14,6 +14,28 @@ from calmly.io import load_config
 
 from stable_baselines3.common.callbacks import CallbackList, BaseCallback
 
+class RolloutSuccessRateCallback(BaseCallback):
+    """
+    Logs average episode success rate to TensorBoard during training.
+    """
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        self.successes = []
+
+    def _on_step(self) -> bool:
+        # Loop through all infos (one per env)
+        for info in self.locals.get("infos", []):
+            # Only log on episode end
+            if "episode" in info and "is_success" in info:
+                self.successes.append(info["is_success"])
+        return True
+
+    def _on_rollout_end(self) -> None:
+        if self.successes:
+            success_rate = sum(self.successes) / len(self.successes)
+            self.logger.record("rollout/success_rate", success_rate)
+            self.successes.clear()
+        
 class AvgRewardLoggerCallback(BaseCallback):
     """
     Logs average reward per step to TensorBoard during training.
@@ -37,8 +59,6 @@ class AvgRewardLoggerCallback(BaseCallback):
             avg_reward = np.mean(self.avg_rewards_per_step)
             self.logger.record("rollout/avg_reward_per_step", avg_reward)
             self.avg_rewards_per_step.clear()
-
-from stable_baselines3.common.callbacks import BaseCallback
 
 class SaveOnStepCallback(BaseCallback):
     """
@@ -65,7 +85,8 @@ def train_ppo_model(
     quiet: bool = False,
     force: bool = False,
     continue_training: bool = False,
-    skip_bc: bool = False
+    skip_bc: bool = False,
+    n_envs: int = None
 ):
     if config is None:
         if not quiet:
@@ -104,9 +125,16 @@ def train_ppo_model(
     else:
         env_settings = None
 
+    if n_envs is None:
+        n_envs = config['ppo']['n_envs']
+    else:
+        if not quiet:
+            print("Overriding the config setting for n_envs with a directly specified parameter")
+    if not quiet:
+        print(f"Using {n_envs} environments")
     seed = config['ppo'].get("seed", 42)
     device_name = config['ppo'].get("device", None)
-    n_envs = config['ppo']['n_envs']
+    
     torch_num_threads = config['ppo'].get("torch_num_threads", 1)
     learning_rate = float(config['ppo'].get("learning_rate", 3e-4))
     total_timesteps = config['ppo'].get("total_timesteps", 400_000)
@@ -221,7 +249,8 @@ def train_ppo_model(
         SaveOnStepCallback(
             save_path=save_path,
             save_freq=save_freq
-        )
+        ),
+        RolloutSuccessRateCallback()
     ])
 
     model.learn(
@@ -243,14 +272,22 @@ def main():
     parser.add_argument("-f", "--force", action='store_true', help="Override the enable/disable setting in the config file")
     parser.add_argument("-c", "--continue", dest="continue_training", action='store_true', help="Continue from a previously saved PPO model")
     parser.add_argument("-n", "--no-imitation", dest="skip_bc", action='store_true', help="Do not initialize PPO with behavioral cloning policy")
+    parser.add_argument("-N", "--number_of_environments", type=int, default=-1, dest="n_envs", help="Number of environments to use (overrides the config file.")
+    
     args = parser.parse_args()
+
+    if args.n_envs == -1:
+        n_envs = None
+    else:
+        n_envs = args.n_envs
 
     train_ppo_model(
         config_path=args.config,
         quiet=args.quiet,
         force=args.force,
         continue_training=args.continue_training,
-        skip_bc=args.skip_bc
+        skip_bc=args.skip_bc,
+        n_envs=n_envs
     )
 
 if __name__ == "__main__":

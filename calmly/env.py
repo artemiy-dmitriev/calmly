@@ -685,7 +685,8 @@ class CavityAlignmentEnv(gym.Env):
         info['terminated'] = terminated
         info['truncated'] = truncated
         if terminated or truncated:
-            info['success'] = success
+            info['success'] = success # TODO: clean this up as it duplicates 'is_success' now.
+            info['is_success'] = success # Expected by SB3
         for k, v in reward_components.items():
             if k not in self.reward_component_keys:
                 raise ValueError(f"""Reward component {k} is not in self.reward_component_keys.
@@ -794,7 +795,7 @@ def get_env_factory(
             env = AvgRewardPerStepWrapper(env)
             
         if monitor:
-            env = stable_baselines3.common.monitor.Monitor(env)
+            env = stable_baselines3.common.monitor.Monitor(env, info_keywords=("is_success",))
         
         return env
 
