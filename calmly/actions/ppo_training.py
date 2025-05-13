@@ -80,7 +80,7 @@ class SaveOnStepCallback(BaseCallback):
                 print(f"Saved checkpoint: {step_path}")
             if self.use_VecNormalize:
                 vn_output_path = os.path.splitext(step_path)[0]+"_vecnormalize.pkl"
-                if not quiet:
+                if self.verbose > 0:
                     print(f"Saving normalisation settings to {vn_output_path}...", end=' ')
                 self.training_env.save(vn_output_path)
                 if not quiet:
@@ -296,7 +296,9 @@ def train_ppo_model(
         AvgRewardLoggerCallback(),
         SaveOnStepCallback(
             save_path=save_path,
-            save_freq=save_freq
+            save_freq=save_freq,
+            use_VecNormalize=use_VecNormalize,
+            verbose = int(not quiet)
         ),
         RolloutSuccessRateCallback()
     ])
