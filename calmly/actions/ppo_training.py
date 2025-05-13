@@ -83,7 +83,7 @@ class SaveOnStepCallback(BaseCallback):
                 if self.verbose > 0:
                     print(f"Saving normalisation settings to {vn_output_path}...", end=' ')
                 self.training_env.save(vn_output_path)
-                if not quiet:
+                if self.verbose > 0:
                     print("Done")
             
         return True
